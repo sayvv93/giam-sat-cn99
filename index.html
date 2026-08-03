@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Tra Cứu Tồn CN99 Nguồn CUS Gửi - FPT</title>
+    <style>
+        :root {
+            --fpt-orange: #F15A24;
+            --fpt-orange-dark: #d24818;
+            --fpt-orange-light: #fff2ed;
+            --fpt-blue: #00A99D;
+            --fpt-dark: #231F20;
+            --bg-color: #f7f9fc;
+            --card-bg: #ffffff;
+            --border-color: #fce8e3;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1650px;
+            margin: 0 auto;
+        }
+
+        .header-box {
+            background: linear-gradient(135deg, var(--fpt-orange), #ff8453);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(241, 90, 36, 0.25);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .sync-status {
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .filters {
+            background: var(--card-bg);
+            padding: 20px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            border-left: 5px solid var(--fpt-orange);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 700;
+            font-size: 12px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 2px solid #e1e8ed;
+            min-width: 210px;
+            font-size: 13px;
+            background-color: #fff;
+            color: #333;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--fpt-orange);
+            outline: none;
+            box-shadow: 0 0 0 4px var(--fpt-orange-light);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: var(--fpt-orange);
+            font-weight: 600;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .table-responsive {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            table-layout: auto;
+        }
+
+        th, td {
+            padding: 14px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        th {
+            background-color: var(--fpt-dark);
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        th:first-child {
+            border-top-left-radius: 12px;
+        }
+        th:last-child {
+            border-top-right-radius: 12px;
+        }
+
+        tr:hover {
+            background-color: var(--fpt-orange-light);
+        }
+
+        .col-ghichu {
+            min-width: 320px;
+            max-width: 450px;
+            white-space: normal !important;
+            word-wrap: break-word;
+            line-height: 1.5;
+            color: #444;
+        }
+
+        /* Thu gọn cột kết quả vừa khít chữ */
+        .col-ketqua {
+            width: auto;
+        }
+
+        select.ket-qua {
+            padding: 5px 6px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            font-weight: 600;
+            width: auto;
+            min-width: 95px;
+            font-size: 12px;
+            background: #fafafa;
+        }
+
+        select.ket-qua:focus {
+            border-color: var(--fpt-orange);
+        }
+
+        .col-thaotac {
+            width: 70px;
+            text-align: center;
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, var(--fpt-orange), #e04b16);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 4px 10px rgba(241, 90, 36, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #d24818, #b83d10);
+            box-shadow: 0 6px 12px rgba(241, 90, 36, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-submit:disabled {
+            background: #bdc3c7;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        td b {
+            color: var(--fpt-orange-dark);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header-box">
+            <h2>🔥 Dashboard Tra Cứu Tồn CN99 Nguồn CUS Gửi</h2>
+            <div id="syncText" class="sync-status">✔ Đã đồng bộ Google Sheets!</div>
+        </div>
+
+        <!-- Bộ Lọc Đầy Đủ -->
+        <div class="filters">
+            <div class="filter-group">
+                <label for="filterB">📍 Lọc Block:</label>
+                <select id="filterB" onchange="filterTable()">
+                    <option value="">-- Tất cả Block --</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterC">⚙️ Lọc Kỹ Thuật:</label>
+                <select id="filterC" onchange="filterTable()">
+                    <option value="">-- Tất cả Kỹ Thuật --</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterKV">🌍 Lọc KV:</label>
+                <select id="filterKV" onchange="filterTable()">
+                    <option value="">-- Tất cả KV --</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="filterCUS">👤 Lọc CUS:</label>
+                <select id="filterCUS" onchange="filterTable()">
+                    <option value="">-- Tất cả CUS --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <div id="loading" class="loading">⏳ Đang kết nối lấy dữ liệu siêu tốc từ hệ thống...</div>
+            <table id="dataTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>SHD</th>
+                        <th>Block</th>
+                        <th>Kỹ Thuật</th>
+                        <th class="col-ghichu">Ghi Chú</th>
+                        <th class="col-ketqua">Kết Quả</th>
+                        <th class="col-thaotac">Thao Tác</th>
+                        <th>Tên KH</th>
+                        <th>Tập Điểm</th>
+                        <th>Số Tiền</th>
+                        <th>KV</th>
+                        <th>Nội Dung</th>
+                        <th>CUS</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZHOvMbeS6Z87Cd77b4Q9HliNmFKkANQQB-x0-28EeoIsOFHA6AwjWwBZ95pnGxoCo/exec";
+        
+        let allData = [];
+
+        window.onload = function() {
+            let script = document.createElement('script');
+            script.src = `${WEB_APP_URL}?callback=handleData`;
+            document.body.appendChild(script);
+        };
+
+        function handleData(data) {
+            allData = data.filter(item => {
+                let b = String(item.khuVuc || "").trim();
+                let c = String(item.kyThuat || "").trim();
+                let s = String(item.shd || "").trim();
+                
+                if (!s && !b && !c) return false;
+                if (b === "#N/A" || c === "#N/A") return false;
+                if (b === "" && c === "") return false;
+                
+                return true;
+            });
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dataTable').style.display = 'table';
+            initFilters();
+            renderTable(allData);
+        }
+
+        function initFilters() {
+            let blocks = [...new Set(allData.map(item => item.khuVuc))].filter(Boolean).sort();
+            let kyThuats = [...new Set(allData.map(item => item.kyThuat))].filter(Boolean).sort();
+            let kvs = [...new Set(allData.map(item => item.kv))].filter(Boolean).sort();
+            let cuss = [...new Set(allData.map(item => item.cus))].filter(Boolean).sort();
+            
+            let selectB = document.getElementById('filterB');
+            let selectC = document.getElementById('filterC');
+            let selectKV = document.getElementById('filterKV');
+            let selectCUS = document.getElementById('filterCUS');
+            
+            blocks.forEach(b => {
+                let opt = document.createElement('option');
+                opt.value = b;
+                opt.innerHTML = b;
+                selectB.appendChild(opt);
+            });
+
+            kyThuats.forEach(kt => {
+                let opt = document.createElement('option');
+                opt.value = kt;
+                opt.innerHTML = kt;
+                selectC.appendChild(opt);
+            });
+
+            kvs.forEach(kv => {
+                let opt = document.createElement('option');
+                opt.value = kv;
+                opt.innerHTML = kv;
+                selectKV.appendChild(opt);
+            });
+
+            cuss.forEach(cus => {
+                let opt = document.createElement('option');
+                opt.value = cus;
+                opt.innerHTML = cus;
+                selectCUS.appendChild(opt);
+            });
+        }
+
+        function filterTable() {
+            let selectedBlock = document.getElementById('filterB').value;
+            let selectedKT = document.getElementById('filterC').value;
+            let selectedKV = document.getElementById('filterKV').value;
+            let selectedCUS = document.getElementById('filterCUS').value;
+
+            let filtered = allData.filter(item => {
+                let matchB = !selectedBlock || item.khuVuc === selectedBlock;
+                let matchC = !selectedKT || item.kyThuat === selectedKT;
+                let matchKV = !selectedKV || item.kv === selectedKV;
+                let matchCUS = !selectedCUS || item.cus === selectedCUS;
+                return matchB && matchC && matchKV && matchCUS;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(data) {
+            let tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: #777; padding: 30px; font-weight: 500;">🚫 Không tìm thấy dữ liệu phù hợp với bộ lọc</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${item.shd || ''}</b></td>
+                    <td>${item.khuVuc || ''}</td>
+                    <td>${item.kyThuat || ''}</td>
+                    <td class="col-ghichu">${item.ghiChu || ''}</td>
+                    <td class="col-ketqua">
+                        <select class="ket-qua" id="select_${item.row}">
+                            <option value="" ${item.ketQua === "" ? "selected" : ""}>-- Chọn --</option>
+                            <option value="Đã thu" ${item.ketQua === "Đã thu" ? "selected" : ""}>Đã thu</option>
+                            <option value="Chưa thu" ${item.ketQua === "Chưa thu" ? "selected" : ""}>Chưa thu</option>
+                            <option value="Hẹn lại" ${item.ketQua === "Hẹn lại" ? "selected" : ""}>Hẹn lại</option>
+                        </select>
+                    </td>
+                    <td class="col-thaotac">
+                        <button class="btn-submit" id="btn_${item.row}" onclick="submitStatus(${item.row})">Gửi</button>
+                    </td>
+                    <td>${item.tenKH || ''}</td>
+                    <td>${item.tapDiem || ''}</td>
+                    <td>${item.soTien || ''}</td>
+                    <td>${item.kv || ''}</td>
+                    <td>${item.noiDung || ''}</td>
+                    <td>${item.cus || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function submitStatus(rowNumber) {
+            let selectElement = document.getElementById(`select_${rowNumber}`);
+            let btnElement = document.getElementById(`btn_${rowNumber}`);
+            let value = selectElement.value;
+
+            btnElement.innerText = "Đang gửi...";
+            btnElement.disabled = true;
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify({ row: rowNumber, value: value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                btnElement.innerText = "Gửi";
+                btnElement.disabled = false;
+                
+                let syncText = document.getElementById('syncText');
+                syncText.style.opacity = 1;
+                setTimeout(() => {
+                    syncText.style.opacity = 0;
+                }, 2500);
+
+                let item = allData.find(d => d.row === rowNumber);
+                if(item) item.ketQua = value;
+            })
+            .catch(error => {
+                console.error("Lỗi:", error);
+                alert("Có lỗi xảy ra khi gửi dữ liệu!");
+                btnElement.innerText = "Gửi";
+                btnElement.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

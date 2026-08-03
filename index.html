@@ -165,7 +165,6 @@
             color: #444;
         }
 
-        /* Thu gọn cột kết quả vừa khít chữ */
         .col-ketqua {
             width: auto;
         }
@@ -229,7 +228,6 @@
             <div id="syncText" class="sync-status">✔ Đã đồng bộ Google Sheets!</div>
         </div>
 
-        <!-- Bộ Lọc Đầy Đủ -->
         <div class="filters">
             <div class="filter-group">
                 <label for="filterB">📍 Lọc Block:</label>
@@ -312,7 +310,7 @@
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dataTable').style.display = 'table';
             initFilters();
-            renderTable(allData);
+            filterTable();
         }
 
         function initFilters() {
@@ -362,6 +360,9 @@
             let selectedCUS = document.getElementById('filterCUS').value;
 
             let filtered = allData.filter(item => {
+                // ẨN CÁC DÒNG ĐÃ THU
+                if (String(item.ketQua).trim() === "Đã thu") return false;
+
                 let matchB = !selectedBlock || item.khuVuc === selectedBlock;
                 let matchC = !selectedKT || item.kyThuat === selectedKT;
                 let matchKV = !selectedKV || item.kv === selectedKV;
@@ -377,7 +378,7 @@
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: #777; padding: 30px; font-weight: 500;">🚫 Không tìm thấy dữ liệu phù hợp với bộ lọc</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: #777; padding: 30px; font-weight: 500;">🚫 Không tìm thấy dữ liệu hoặc tất cả đã được thu xong!</td></tr>`;
                 return;
             }
 
@@ -435,6 +436,9 @@
 
                 let item = allData.find(d => d.row === rowNumber);
                 if(item) item.ketQua = value;
+
+                // Tự động lọc lại bảng để ẩn ngay dòng vừa chọn "Đã thu"
+                filterTable();
             })
             .catch(error => {
                 console.error("Lỗi:", error);

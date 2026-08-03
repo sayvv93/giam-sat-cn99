@@ -354,14 +354,15 @@
         }
 
         function filterTable() {
-            let selectedBlock = document.getElementById('filterB').value;
+            let selectedBlock = document.getElementById('filterB'].value;
             let selectedKT = document.getElementById('filterC').value;
             let selectedKV = document.getElementById('filterKV').value;
             let selectedCUS = document.getElementById('filterCUS').value;
 
             let filtered = allData.filter(item => {
-                // ẨN CÁC DÒNG ĐÃ THU
-                if (String(item.ketQua).trim() === "Đã thu") return false;
+                // Kiểm tra loại bỏ triệt để các dạng "Đã thu" (bất kể hoa thường hay khoảng trắng)
+                let status = String(item.ketQua || "").trim().toLowerCase();
+                if (status === "đã thu") return false;
 
                 let matchB = !selectedBlock || item.khuVuc === selectedBlock;
                 let matchC = !selectedKT || item.kyThuat === selectedKT;
@@ -437,7 +438,7 @@
                 let item = allData.find(d => d.row === rowNumber);
                 if(item) item.ketQua = value;
 
-                // Tự động lọc lại bảng để ẩn ngay dòng vừa chọn "Đã thu"
+                // Ẩn ngay lập tức dòng đó khỏi giao diện
                 filterTable();
             })
             .catch(error => {

@@ -296,14 +296,8 @@
 
         function handleData(data) {
             allData = data.filter(item => {
-                let b = String(item.khuVuc || "").trim();
-                let c = String(item.kyThuat || "").trim();
                 let s = String(item.shd || "").trim();
-                
-                if (!s && !b && !c) return false;
-                if (b === "#N/A" || c === "#N/A") return false;
-                if (b === "" && c === "") return false;
-                
+                if (!s || s === "#N/A") return false;
                 return true;
             });
 
@@ -314,10 +308,10 @@
         }
 
         function initFilters() {
-            let blocks = [...new Set(allData.map(item => item.khuVuc))].filter(Boolean).sort();
-            let kyThuats = [...new Set(allData.map(item => item.kyThuat))].filter(Boolean).sort();
-            let kvs = [...new Set(allData.map(item => item.kv))].filter(Boolean).sort();
-            let cuss = [...new Set(allData.map(item => item.cus))].filter(Boolean).sort();
+            let blocks = [...new Set(allData.map(item => item.khuVuc))].filter(b => b && b !== "#N/A").sort();
+            let kyThuats = [...new Set(allData.map(item => item.kyThuat))].filter(kt => kt && kt !== "#N/A").sort();
+            let kvs = [...new Set(allData.map(item => item.kv))].filter(kv => kv && kv !== "#N/A").sort();
+            let cuss = [...new Set(allData.map(item => item.cus))].filter(cus => cus && cus !== "#N/A").sort();
             
             let selectB = document.getElementById('filterB');
             let selectC = document.getElementById('filterC');
@@ -354,13 +348,13 @@
         }
 
         function filterTable() {
-            let selectedBlock = document.getElementById('filterB'].value;
+            let selectedBlock = document.getElementById('filterB').value;
             let selectedKT = document.getElementById('filterC').value;
             let selectedKV = document.getElementById('filterKV').value;
             let selectedCUS = document.getElementById('filterCUS').value;
 
             let filtered = allData.filter(item => {
-                // Kiểm tra loại bỏ triệt để các dạng "Đã thu" (bất kể hoa thường hay khoảng trắng)
+                // Chỉ ẩn khi kết quả chính xác là "Đã thu"
                 let status = String(item.ketQua || "").trim().toLowerCase();
                 if (status === "đã thu") return false;
 
@@ -438,7 +432,6 @@
                 let item = allData.find(d => d.row === rowNumber);
                 if(item) item.ketQua = value;
 
-                // Ẩn ngay lập tức dòng đó khỏi giao diện
                 filterTable();
             })
             .catch(error => {

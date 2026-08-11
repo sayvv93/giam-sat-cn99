@@ -448,8 +448,8 @@
                 let kvVal = String(item.kv || "").trim();
                 let status = String(item.ketQua || "").trim().toLowerCase();
 
-                // 🟢 ĐIỀU KIỆN ẨN DÒNG TRONG THỐNG KÊ: Bỏ qua "đã thu" và "đã gửi hình..."
-                if (status !== "đã thu" && status !== "đã gửi hình và định vị lên gr") {
+                // 🟢 ĐIỀU KIỆN ẨN DÒNG TRONG THỐNG KÊ: Bỏ qua các trạng thái hoàn thành / kết thúc
+                if (status !== "đã thu" && status !== "đã gửi hình và định vị lên gr" && status !== "tạo checklist") {
                     if (kt && kt !== "#N/A") {
                         ktCount[kt] = (ktCount[kt] || 0) + 1;
                     }
@@ -532,8 +532,8 @@
             let filtered = allData.filter(item => {
                 let status = String(item.ketQua || "").trim().toLowerCase();
                 
-                // 🟢 ẨN DÒNG KHI ĐÃ HOÀN THÀNH (ĐÃ THU HOẶC ĐÃ GỬI HÌNH VÀ ĐỊNH VỊ LÊN GR)
-                if (status === "đã thu" || status === "đã gửi hình và định vị lên gr") return false;
+                // 🟢 ẨN DÒNG KHI ĐÃ HOÀN THÀNH (ĐÃ THU, ĐÃ GỬI HÌNH HOẶC TẠO CHECKLIST)
+                if (status === "đã thu" || status === "đã gửi hình và định vị lên gr" || status === "tạo checklist") return false;
 
                 let matchB = !selectedBlock || item.khuVuc === selectedBlock;
                 let matchC = !selectedKT || item.kyThuat === selectedKT;
@@ -576,9 +576,17 @@
                     badgeHtml = `<span class="badge-normal">${pendText}</span>`;
                 }
 
-                // 🟢 KIỂM TRA NẾU KV THUỘC CN60 THÌ HIỂN THỊ THÊM OPTION TRONG DROPDOWN KẾT QUẢ
                 let isCN60 = String(item.kv || "").toUpperCase().includes("CN60");
-                let extraOption = isCN60 ? `<option value="Đã gửi hình và định vị lên GR" ${item.ketQua === "Đã gửi hình và định vị lên GR" ? "selected" : ""}>Đã gửi hình và định vị lên GR</option>` : "";
+                
+                // 🟢 ĐIỀU CHỈNH OPTION CHO TỪNG LOẠI KV:
+                // - Nếu là CN60: Hiển thị option "Đã gửi hình và định vị lên GR"
+                // - Nếu là mục còn lại: Hiển thị option "Tạo Checklist"
+                let extraOption = "";
+                if (isCN60) {
+                    extraOption = `<option value="Đã gửi hình và định vị lên GR" ${item.ketQua === "Đã gửi hình và định vị lên GR" ? "selected" : ""}>Đã gửi hình và định vị lên GR</option>`;
+                } else {
+                    extraOption = `<option value="Tạo Checklist" ${item.ketQua === "Tạo Checklist" ? "selected" : ""}>Tạo Checklist</option>`;
+                }
 
                 let tr = document.createElement('tr');
                 tr.className = trClass;

@@ -59,12 +59,18 @@
             transition: opacity 0.4s ease;
         }
 
-        /* Thống kê tổng quan - Duy nhất 1 khung */
+        /* Thống kê tổng quan - 2 khung: Nhân sự & Tab riêng CN60 */
         .stats-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 20px;
             margin-bottom: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .stat-card {
@@ -76,6 +82,10 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+        }
+
+        .stat-card.cn60 {
+            border-left-color: var(--fpt-orange);
         }
 
         .stat-title {
@@ -264,11 +274,15 @@
             <div id="syncText" class="sync-status">✔ Đã đồng bộ Google Sheets!</div>
         </div>
 
-        <!-- Khung Thống Kê Tổng Quan - Chỉ hiển thị tồn toàn bộ nhân sự -->
+        <!-- Khung Thống Kê Tổng Quan: Tồn nhân sự & Tồn CN60 (Cột KV) -->
         <div class="stats-grid" id="statsContainer" style="display: none;">
             <div class="stat-card">
                 <div class="stat-title">👷 Tồn Toàn Bộ Nhân Sự</div>
                 <div class="stat-sub" id="statAllKT">Đang tính toán...</div>
+            </div>
+            <div class="stat-card cn60">
+                <div class="stat-title">📍 Tồn Riêng Cột KV (CN60)</div>
+                <div class="stat-sub" id="statCN60">Đang tính toán...</div>
             </div>
         </div>
 
@@ -356,23 +370,43 @@
 
         function updateStatistics() {
             let ktCount = {};
+            let cn60Count = { totalTon: 0, byKT: {} };
 
             allData.forEach(item => {
                 let kt = String(item.kyThuat || "Khác").trim();
+                let kvVal = String(item.kv || "").trim();
                 let status = String(item.ketQua || "").trim().toLowerCase();
 
                 // Thống kê tồn (chưa phải Đã thu)
                 if (status !== "đã thu") {
-                    if (kt && kt !== "#N/A") ktCount[kt] = (ktCount[kt] || 0) + 1;
+                    if (kt && kt !== "#N/A") {
+                        ktCount[kt] = (ktCount[kt] || 0) + 1;
+                    }
+
+                    // Kiểm tra riêng cột KV chứa "CN60" (không phân biệt hoa thường)
+                    if (kvVal.toUpperCase().includes("CN60")) {
+                        cn60Count.totalTon++;
+                        if (kt && kt !== "#N/A") {
+                            cn60Count.byKT[kt] = (cn60Count.byKT[kt] || 0) + 1;
+                        }
+                    }
                 }
             });
 
-            // Hiển thị tồn toàn bộ nhân sự (sắp xếp từ cao xuống thấp)
+            // 1. Hiển thị tồn toàn bộ nhân sự
             let sortedTonKT = Object.entries(ktCount).sort((a, b) => b[1] - a[1]);
             let allKtTonText = sortedTonKT.length > 0
                 ? sortedTonKT.map(([k, v]) => `<b>${k}:</b> ${v} tồn`).join(" | ")
                 : "Không có tồn";
             document.getElementById('statAllKT').innerHTML = allKtTonText;
+
+            // 2. Hiển thị tồn riêng cột KV (CN60)
+            let sortedCN60KT = Object.entries(cn60Count.byKT).sort((a, b) => b[1] - a[1]);
+            let cn60Detail = sortedCN60KT.length > 0
+                ? sortedCN60KT.map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ")
+                : "Không có";
+            
+            document.getElementById('statCN60').innerHTML = `<b>Tổng tồn CN60:</b> ${cn60Count.totalTon} phiếu<br>Chi tiết theo KT: ${cn60Detail}`;
         }
 
         function initFilters() {

@@ -448,7 +448,8 @@
                 let kvVal = String(item.kv || "").trim();
                 let status = String(item.ketQua || "").trim().toLowerCase();
 
-                if (status !== "đã thu") {
+                // 🟢 ĐIỀU KIỆN ẨN DÒNG TRONG THỐNG KÊ: Bỏ qua "đã thu" và "đã gửi hình..."
+                if (status !== "đã thu" && status !== "đã gửi hình và định vị lên gr") {
                     if (kt && kt !== "#N/A") {
                         ktCount[kt] = (ktCount[kt] || 0) + 1;
                     }
@@ -530,7 +531,9 @@
 
             let filtered = allData.filter(item => {
                 let status = String(item.ketQua || "").trim().toLowerCase();
-                if (status === "đã thu") return false;
+                
+                // 🟢 ẨN DÒNG KHI ĐÃ HOÀN THÀNH (ĐÃ THU HOẶC ĐÃ GỬI HÌNH VÀ ĐỊNH VỊ LÊN GR)
+                if (status === "đã thu" || status === "đã gửi hình và định vị lên gr") return false;
 
                 let matchB = !selectedBlock || item.khuVuc === selectedBlock;
                 let matchC = !selectedKT || item.kyThuat === selectedKT;
@@ -573,6 +576,10 @@
                     badgeHtml = `<span class="badge-normal">${pendText}</span>`;
                 }
 
+                // 🟢 KIỂM TRA NẾU KV THUỘC CN60 THÌ HIỂN THỊ THÊM OPTION TRONG DROPDOWN KẾT QUẢ
+                let isCN60 = String(item.kv || "").toUpperCase().includes("CN60");
+                let extraOption = isCN60 ? `<option value="Đã gửi hình và định vị lên GR" ${item.ketQua === "Đã gửi hình và định vị lên GR" ? "selected" : ""}>Đã gửi hình và định vị lên GR</option>` : "";
+
                 let tr = document.createElement('tr');
                 tr.className = trClass;
                 tr.innerHTML = `
@@ -587,6 +594,7 @@
                             <option value="Đã thu" ${item.ketQua === "Đã thu" ? "selected" : ""}>Đã thu</option>
                             <option value="Chưa thu" ${item.ketQua === "Chưa thu" ? "selected" : ""}>Chưa thu</option>
                             <option value="Hẹn lại" ${item.ketQua === "Hẹn lại" ? "selected" : ""}>Hẹn lại</option>
+                            ${extraOption}
                         </select>
                     </td>
                     <td class="col-thaotac">

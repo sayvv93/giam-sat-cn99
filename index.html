@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DNI2_Bill và CN60 - FPT</title>
+    <title>Tồn Phiếu & Cảnh Báo Onsite - FPT</title>
     <style>
         :root {
             --fpt-orange: #F15A24;
@@ -60,51 +60,42 @@
             transition: opacity 0.4s ease;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 1024px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .stat-card {
-            background: var(--card-bg);
-            padding: 18px 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            border-left: 5px solid var(--fpt-blue);
+        /* TABS NAVIGATION */
+        .tabs-nav {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e1e8ed;
+            padding-bottom: 10px;
         }
 
-        .stat-card.cn60 {
-            border-left-color: var(--fpt-orange);
-        }
-
-        .stat-title {
-            font-size: 12px;
+        .tab-btn {
+            background: #e1e8ed;
+            color: #555;
+            border: none;
+            padding: 10px 24px;
+            font-size: 15px;
             font-weight: 700;
-            color: #777;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .stat-sub {
-            font-size: 13px;
-            color: #444;
-            font-weight: 500;
-            line-height: 1.6;
-            max-height: 130px;
-            overflow-y: auto;
+        .tab-btn.active {
+            background: var(--fpt-orange);
+            color: white;
+            box-shadow: 0 4px 12px rgba(241, 90, 36, 0.3);
         }
 
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* FILTERS */
         .filters {
             background: var(--card-bg);
             padding: 20px 25px;
@@ -136,21 +127,93 @@
             padding: 9px 12px;
             border-radius: 8px;
             border: 2px solid #e1e8ed;
-            min-width: 210px;
+            min-width: 200px;
             font-size: 13px;
             background-color: #fff;
             color: #333;
             font-weight: 500;
-            transition: all 0.3s ease;
             cursor: pointer;
         }
 
         select:focus {
             border-color: var(--fpt-orange);
             outline: none;
-            box-shadow: 0 0 0 4px var(--fpt-orange-light);
         }
 
+        /* CARDS GRID (CHO TAB CẢNH BÁO) */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card-item {
+            background: var(--card-bg);
+            border-radius: 14px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+            overflow: hidden;
+            border-top: 6px solid var(--fpt-orange);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .card-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(241, 90, 36, 0.15);
+        }
+
+        .card-header {
+            background: #fff5f2;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title-text {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--fpt-orange-dark);
+            margin: 0;
+        }
+
+        .card-badge {
+            background: var(--fpt-orange);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .card-body {
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .stat-row span:last-child {
+            color: var(--fpt-dark);
+            font-weight: 700;
+        }
+
+        .stat-row.urgent span:last-child {
+            color: var(--danger-color);
+        }
+
+        /* TABLE */
         .loading {
             text-align: center;
             padding: 50px;
@@ -173,7 +236,6 @@
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            table-layout: auto;
         }
 
         th, td {
@@ -188,14 +250,6 @@
             background-color: var(--fpt-dark);
             color: white;
             font-weight: 600;
-            letter-spacing: 0.3px;
-        }
-
-        th:first-child {
-            border-top-left-radius: 12px;
-        }
-        th:last-child {
-            border-top-right-radius: 12px;
         }
 
         tr:hover {
@@ -205,9 +259,6 @@
         tr.row-danger {
             background-color: rgba(231, 76, 60, 0.08);
         }
-        tr.row-danger:hover {
-            background-color: rgba(231, 76, 60, 0.15);
-        }
 
         .badge-warning {
             background-color: var(--danger-color);
@@ -216,7 +267,6 @@
             border-radius: 6px;
             font-size: 11px;
             font-weight: 700;
-            display: inline-block;
         }
 
         .badge-normal {
@@ -226,7 +276,6 @@
             border-radius: 6px;
             font-size: 11px;
             font-weight: 700;
-            display: inline-block;
         }
 
         .badge-missing {
@@ -236,7 +285,6 @@
             border-radius: 6px;
             font-size: 11px;
             font-weight: 700;
-            display: inline-block;
         }
 
         .col-ghichu {
@@ -248,28 +296,13 @@
             color: #444;
         }
 
-        .col-ketqua {
-            width: auto;
-        }
-
         select.ket-qua {
             padding: 5px 6px;
             border-radius: 6px;
             border: 2px solid #ddd;
             font-weight: 600;
-            width: auto;
-            min-width: 95px;
             font-size: 12px;
             background: #fafafa;
-        }
-
-        select.ket-qua:focus {
-            border-color: var(--fpt-orange);
-        }
-
-        .col-thaotac {
-            width: 70px;
-            text-align: center;
         }
 
         .btn-submit {
@@ -282,20 +315,12 @@
             font-size: 12px;
             font-weight: 700;
             box-shadow: 0 4px 10px rgba(241, 90, 36, 0.3);
-            transition: all 0.2s ease;
-        }
-
-        .btn-submit:hover {
-            background: linear-gradient(135deg, #d24818, #b83d10);
-            box-shadow: 0 6px 12px rgba(241, 90, 36, 0.4);
-            transform: translateY(-1px);
         }
 
         .btn-submit:disabled {
             background: #bdc3c7;
-            box-shadow: none;
             cursor: not-allowed;
-            transform: none;
+            box-shadow: none;
         }
 
         td b {
@@ -307,85 +332,95 @@
 
     <div class="container">
         <div class="header-box">
-            <h2>🔥 DNI2_Bill và CN60</h2>
-            <div id="syncText" class="sync-status">✔ Đã đồng bộ Google Sheets!</div>
+            <h2>🛠️ Tồn Phiếu & Cảnh Báo Onsite</h2>
+            <div id="syncText" class="sync-status">✔ Đã đồng bộ!</div>
         </div>
 
-        <div class="stats-grid" id="statsContainer" style="display: none;">
-            <div class="stat-card">
-                <div class="stat-title">👷 Tồn Toàn Bộ Nhân Sự</div>
-                <div class="stat-sub" id="statAllKT">Đang tính toán...</div>
-            </div>
-            <div class="stat-card cn60">
-                <div class="stat-title">📍 Tồn Riêng Cột KV (CN60) & Cảnh Báo Quá Hạn</div>
-                <div class="stat-sub" id="statCN60">Đang tính toán...</div>
-            </div>
+        <!-- HỆ THỐNG TAB CHUYỂN ĐỔI -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('tonTab', this)">📋 Tồn Phiếu Onsite</button>
+            <button class="tab-btn" onclick="switchTab('canhBaoTab', this)">📊 Cảnh Báo Theo Khu Vực & Kỹ Thuật</button>
         </div>
 
+        <!-- BỘ LỌC CHUNG CHO CẢ 2 TAB -->
         <div class="filters">
             <div class="filter-group">
                 <label for="filterB">📍 Lọc Block:</label>
-                <select id="filterB" onchange="filterTable()">
+                <select id="filterB" onchange="applyFilters()">
                     <option value="">-- Tất cả Block --</option>
                 </select>
             </div>
-
             <div class="filter-group">
                 <label for="filterC">⚙️ Lọc Kỹ Thuật:</label>
-                <select id="filterC" onchange="filterTable()">
+                <select id="filterC" onchange="applyFilters()">
                     <option value="">-- Tất cả Kỹ Thuật --</option>
                 </select>
             </div>
-
             <div class="filter-group">
                 <label for="filterKV">🌍 Lọc KV:</label>
-                <select id="filterKV" onchange="filterTable()">
+                <select id="filterKV" onchange="applyFilters()">
                     <option value="">-- Tất cả KV --</option>
                 </select>
             </div>
-
             <div class="filter-group">
                 <label for="filterCUS">👤 Lọc CUS:</label>
-                <select id="filterCUS" onchange="filterTable()">
+                <select id="filterCUS" onchange="applyFilters()">
                     <option value="">-- Tất cả CUS --</option>
                 </select>
             </div>
         </div>
 
-        <div class="table-responsive">
-            <div id="loading" class="loading">⏳ Đang kết nối lấy dữ liệu siêu tốc từ hệ thống...</div>
-            <table id="dataTable" style="display: none;">
-                <thead>
-                    <tr>
-                        <th>SHD</th>
-                        <th>Thời Gian Tồn</th>
-                        <th>Block</th>
-                        <th>Kỹ Thuật</th>
-                        <th class="col-ghichu">Ghi Chú</th>
-                        <th class="col-ketqua">Kết Quả</th>
-                        <th class="col-thaotac">Thao Tác</th>
-                        <th>Tên KH</th>
-                        <th>Tập Điểm</th>
-                        <th>Số Tiền</th>
-                        <th>KV</th>
-                        <th>Nội Dung</th>
-                        <th>CUS</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                </tbody>
-            </table>
+        <!-- TAB 1: TỒN PHIẾU -->
+        <div id="tonTab" class="tab-content active">
+            <div class="table-responsive">
+                <div id="loading" class="loading">⏳ Đang kết nối lấy dữ liệu siêu tốc từ hệ thống...</div>
+                <table id="dataTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>SHD</th>
+                            <th>Thời Gian Tồn</th>
+                            <th>Block</th>
+                            <th>Kỹ Thuật</th>
+                            <th class="col-ghichu">Ghi Chú</th>
+                            <th>Kết Quả</th>
+                            <th>Thao Tác</th>
+                            <th>Tên KH</th>
+                            <th>Tập Điểm</th>
+                            <th>Số Tiền</th>
+                            <th>KV</th>
+                            <th>Nội Dung</th>
+                            <th>CUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 2: CẢNH BÁO -->
+        <div id="canhBaoTab" class="tab-content">
+            <div class="cards-grid" id="groupCardsContainer">
+                <div id="loadingCards" class="loading">⏳ Đang tải cảnh báo...</div>
+            </div>
         </div>
     </div>
 
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZHOvMbeS6Z87Cd77b4Q9HliNmFKkANQQB-x0-28EeoIsOFHA6AwjWwBZ95pnGxoCo/exec";
-        
         let allData = [];
 
         window.onload = function() {
             loadData();
         };
+
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
 
         function loadData() {
             let oldScript = document.getElementById('jsonp_data_script');
@@ -406,11 +441,9 @@
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('dataTable').style.display = 'table';
-            document.getElementById('statsContainer').style.display = 'grid';
             
             initFilters();
-            updateStatistics();
-            filterTable();
+            applyFilters();
         }
 
         function getPendData(item) {
@@ -419,11 +452,9 @@
                 if (!isNaN(inputDate.getTime())) {
                     let diffTime = new Date() - inputDate;
                     if (diffTime < 0) diffTime = 0;
-                    
                     let days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                     let hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                     let minutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-                    
                     return { totalMs: diffTime, days, hours, minutes, isValid: true };
                 }
             }
@@ -439,48 +470,6 @@
             return "Tồn " + textParts.join(' ');
         }
 
-        function updateStatistics() {
-            let ktCount = {};
-            let cn60Count = { totalTon: 0, byKT: {}, urgentTon: 0 };
-
-            allData.forEach(item => {
-                let kt = String(item.kyThuat || "Khác").trim();
-                let kvVal = String(item.kv || "").trim();
-                let status = String(item.ketQua || "").trim().toLowerCase();
-
-                // 🟢 ĐIỀU KIỆN ẨN DÒNG TRONG THỐNG KÊ: Bỏ qua các trạng thái hoàn thành / kết thúc
-                if (status !== "đã thu" && status !== "đã gửi hình và định vị lên gr" && status !== "tạo checklist") {
-                    if (kt && kt !== "#N/A") {
-                        ktCount[kt] = (ktCount[kt] || 0) + 1;
-                    }
-
-                    if (kvVal.toUpperCase().includes("CN60")) {
-                        cn60Count.totalTon++;
-                        if (kt && kt !== "#N/A") {
-                            cn60Count.byKT[kt] = (cn60Count.byKT[kt] || 0) + 1;
-                        }
-                        
-                        if (getPendData(item).days > 3) {
-                            cn60Count.urgentTon++;
-                        }
-                    }
-                }
-            });
-
-            let sortedTonKT = Object.entries(ktCount).sort((a, b) => b[1] - a[1]);
-            let allKtTonText = sortedTonKT.length > 0
-                ? sortedTonKT.map(([k, v]) => `<b>${k}:</b> ${v} tồn`).join(" | ")
-                : "Không có tồn";
-            document.getElementById('statAllKT').innerHTML = allKtTonText;
-
-            let sortedCN60KT = Object.entries(cn60Count.byKT).sort((a, b) => b[1] - a[1]);
-            let cn60Detail = sortedCN60KT.length > 0
-                ? sortedCN60KT.map(([k, v]) => `<b>${k}:</b> ${v}`).join(" | ")
-                : "Không có";
-            
-            document.getElementById('statCN60').innerHTML = `<b>Tổng tồn CN60:</b> ${cn60Count.totalTon} phiếu <span style="color:var(--danger-color);">(Quá hạn >3 ngày: ${cn60Count.urgentTon})</span><br>Chi tiết theo KT: ${cn60Detail}`;
-        }
-
         function initFilters() {
             let blocks = [...new Set(allData.map(item => item.khuVuc))].filter(b => b && b !== "#N/A").sort();
             let kyThuats = [...new Set(allData.map(item => item.kyThuat))].filter(kt => kt && kt !== "#N/A").sort();
@@ -493,37 +482,14 @@
             let selectCUS = document.getElementById('filterCUS');
             
             if(selectB.options.length <= 1) {
-                blocks.forEach(b => {
-                    let opt = document.createElement('option');
-                    opt.value = b;
-                    opt.innerHTML = b;
-                    selectB.appendChild(opt);
-                });
-
-                kyThuats.forEach(kt => {
-                    let opt = document.createElement('option');
-                    opt.value = kt;
-                    opt.innerHTML = kt;
-                    selectC.appendChild(opt);
-                });
-
-                kvs.forEach(kv => {
-                    let opt = document.createElement('option');
-                    opt.value = kv;
-                    opt.innerHTML = kv;
-                    selectKV.appendChild(opt);
-                });
-
-                cuss.forEach(cus => {
-                    let opt = document.createElement('option');
-                    opt.value = cus;
-                    opt.innerHTML = cus;
-                    selectCUS.appendChild(opt);
-                });
+                blocks.forEach(b => selectB.add(new Option(b, b)));
+                kyThuats.forEach(kt => selectC.add(new Option(kt, kt)));
+                kvs.forEach(kv => selectKV.add(new Option(kv, kv)));
+                cuss.forEach(cus => selectCUS.add(new Option(cus, cus)));
             }
         }
 
-        function filterTable() {
+        function applyFilters() {
             let selectedBlock = document.getElementById('filterB').value;
             let selectedKT = document.getElementById('filterC').value;
             let selectedKV = document.getElementById('filterKV').value;
@@ -531,8 +497,6 @@
 
             let filtered = allData.filter(item => {
                 let status = String(item.ketQua || "").trim().toLowerCase();
-                
-                // 🟢 ẨN DÒNG KHI ĐÃ HOÀN THÀNH (ĐÃ THU, ĐÃ GỬI HÌNH HOẶC TẠO CHECKLIST)
                 if (status === "đã thu" || status === "đã gửi hình và định vị lên gr" || status === "tạo checklist") return false;
 
                 let matchB = !selectedBlock || item.khuVuc === selectedBlock;
@@ -542,13 +506,67 @@
                 return matchB && matchC && matchKV && matchCUS;
             });
 
-            filtered.sort((a, b) => {
-                let pendA = getPendData(a).totalMs;
-                let pendB = getPendData(b).totalMs;
-                return pendB - pendA;
+            filtered.sort((a, b) => getPendData(b).totalMs - getPendData(a).totalMs);
+
+            // Cập nhật dữ liệu cho cả 2 Tab cùng lúc
+            renderTable(filtered);
+            renderGroupCards(filtered);
+        }
+
+        function renderGroupCards(data) {
+            let container = document.getElementById('groupCardsContainer');
+            container.innerHTML = '';
+
+            let groupMap = {};
+
+            data.forEach(item => {
+                let kv = String(item.kv || "Chưa phân KV").trim();
+                let kt = String(item.kyThuat || "Chưa phân KT").trim();
+                let groupKey = kv + " | " + kt;
+
+                if (!groupMap[groupKey]) {
+                    groupMap[groupKey] = { kv: kv, kt: kt, totalTon: 0, urgentTon: 0 };
+                }
+
+                groupMap[groupKey].totalTon++;
+                let pend = getPendData(item);
+                if (pend.days > 3) {
+                    groupMap[groupKey].urgentTon++;
+                }
             });
 
-            renderTable(filtered);
+            let sortedGroups = Object.values(groupMap).sort((a, b) => b.totalTon - a.totalTon);
+
+            if (sortedGroups.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #777; padding: 40px; font-weight: 600; background: white; border-radius: 12px;">🎉 Tuyệt vời! Không có dữ liệu tồn phù hợp với bộ lọc.</div>`;
+                return;
+            }
+
+            sortedGroups.forEach(grp => {
+                let card = document.createElement('div');
+                card.className = 'card-item';
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3 class="card-title-text">🌍 ${grp.kv}</h3>
+                        <span class="card-badge">${grp.totalTon} phiếu</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-row">
+                            <span>⚙️ Kỹ thuật phụ trách:</span>
+                            <span>${grp.kt}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>📦 Tổng tồn khu vực:</span>
+                            <span>${grp.totalTon} phiếu</span>
+                        </div>
+                        <div class="stat-row urgent">
+                            <span>⚠ Tồn quá hạn (> 3 ngày):</span>
+                            <span>${grp.urgentTon} phiếu</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
         function renderTable(data) {
@@ -556,7 +574,7 @@
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; color: #777; padding: 30px; font-weight: 500;">🚫 Không tìm thấy dữ liệu hoặc tất cả đã được thu xong!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align: center; color: #777; padding: 30px; font-weight: 500;">🚫 Không tìm thấy dữ liệu chi tiết tồn!</td></tr>`;
                 return;
             }
 
@@ -564,29 +582,16 @@
                 let pendData = getPendData(item);
                 let isDanger = pendData.days > 3; 
                 let trClass = isDanger ? "row-danger" : "";
-                
                 let pendText = formatPendText(pendData);
-                let badgeHtml = "";
-
-                if (!pendData.isValid) {
-                    badgeHtml = `<span class="badge-missing">${pendText}</span>`;
-                } else if (isDanger) {
-                    badgeHtml = `<span class="badge-warning">⚠ ${pendText}</span>`;
-                } else {
-                    badgeHtml = `<span class="badge-normal">${pendText}</span>`;
-                }
+                
+                let badgeHtml = !pendData.isValid ? `<span class="badge-missing">${pendText}</span>` :
+                                isDanger ? `<span class="badge-warning">⚠ ${pendText}</span>` :
+                                `<span class="badge-normal">${pendText}</span>`;
 
                 let isCN60 = String(item.kv || "").toUpperCase().includes("CN60");
-                
-                // 🟢 ĐIỀU CHỈNH OPTION CHO TỪNG LOẠI KV:
-                // - Nếu là CN60: Hiển thị option "Đã gửi hình và định vị lên GR"
-                // - Nếu là mục còn lại: Hiển thị option "Tạo Checklist"
-                let extraOption = "";
-                if (isCN60) {
-                    extraOption = `<option value="Đã gửi hình và định vị lên GR" ${item.ketQua === "Đã gửi hình và định vị lên GR" ? "selected" : ""}>Đã gửi hình và định vị lên GR</option>`;
-                } else {
-                    extraOption = `<option value="Tạo Checklist" ${item.ketQua === "Tạo Checklist" ? "selected" : ""}>Tạo Checklist</option>`;
-                }
+                let extraOption = isCN60 ? 
+                    `<option value="Đã gửi hình và định vị lên GR" ${item.ketQua === "Đã gửi hình và định vị lên GR" ? "selected" : ""}>Đã gửi hình và định vị lên GR</option>` : 
+                    `<option value="Tạo Checklist" ${item.ketQua === "Tạo Checklist" ? "selected" : ""}>Tạo Checklist</option>`;
 
                 let tr = document.createElement('tr');
                 tr.className = trClass;
@@ -596,7 +601,7 @@
                     <td>${item.khuVuc || ''}</td>
                     <td>${item.kyThuat || ''}</td>
                     <td class="col-ghichu">${item.ghiChu || ''}</td>
-                    <td class="col-ketqua">
+                    <td>
                         <select class="ket-qua" id="select_${item.row}">
                             <option value="" ${item.ketQua === "" ? "selected" : ""}>-- Chọn --</option>
                             <option value="Đã thu" ${item.ketQua === "Đã thu" ? "selected" : ""}>Đã thu</option>
@@ -605,7 +610,7 @@
                             ${extraOption}
                         </select>
                     </td>
-                    <td class="col-thaotac">
+                    <td>
                         <button class="btn-submit" id="btn_${item.row}" onclick="submitStatus(${item.row})">Gửi</button>
                     </td>
                     <td>${item.tenKH || ''}</td>
@@ -637,17 +642,9 @@
         }
 
         function handleUpdateComplete(data) {
-            let btnElements = document.querySelectorAll('.btn-submit');
-            btnElements.forEach(btn => {
-                btn.innerText = "Gửi";
-                btn.disabled = false;
-            });
-
             let syncText = document.getElementById('syncText');
             syncText.style.opacity = 1;
-            setTimeout(() => {
-                syncText.style.opacity = 0;
-            }, 2500);
+            setTimeout(() => { syncText.style.opacity = 0; }, 2500);
 
             allData = data.filter(item => {
                 let s = String(item.shd || "").trim();
@@ -655,8 +652,7 @@
                 return true;
             });
 
-            updateStatistics();
-            filterTable();
+            applyFilters();
         }
     </script>
 </body>

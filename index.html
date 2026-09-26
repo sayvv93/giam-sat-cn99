@@ -369,81 +369,54 @@
             cursor: not-allowed;
         }
 
-        /* CẢNH BÁO TAB */
-        .cards-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-
-        .card-item {
+        /* CẢNH BÁO TAB — bảng báo cáo: dòng là Kỹ thuật, cột là các giá trị Kết Quả */
+        .table-scroll {
             background: var(--surface);
             border: 1px solid var(--line);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-card);
-            overflow: hidden;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
-        .card-header {
-            background: var(--fpt-orange-tint);
-            padding: 13px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
+        .report-table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 760px; /* buộc cuộn ngang trên di động thay vì bóp méo cột */
+            font-size: 12.5px;
         }
 
-        .card-title-text {
-            font-size: 14.5px;
-            font-weight: 800;
-            color: var(--fpt-orange-dark);
-            margin: 0;
-        }
-
-        .card-badge {
-            background: var(--fpt-orange);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 11.5px;
-            font-weight: 700;
+        .report-table th, .report-table td {
+            padding: 9px 12px;
+            text-align: left;
             white-space: nowrap;
+            border-bottom: 1px solid var(--line);
         }
 
-        .card-body {
-            padding: 13px 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
-
-        .section-label {
-            font-size: 11.5px;
+        .report-table th {
+            position: sticky;
+            top: 0;
+            background: var(--fpt-orange-tint);
+            color: var(--fpt-orange-dark);
             font-weight: 700;
-            color: var(--ink-faint);
-            margin-top: 4px;
+            font-size: 12px;
         }
 
-        .section-label:first-child { margin-top: 0; }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--ink-soft);
-            padding-bottom: 8px;
-            border-bottom: 1px dashed var(--line);
+        .report-table td.num, .report-table th:nth-child(n+3) {
+            text-align: right;
         }
 
-        .stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .report-table tbody tr:nth-child(even) { background: var(--bg); }
 
-        .stat-row span:last-child {
+        .report-table td.col-total { font-weight: 800; color: var(--ink); }
+
+        .report-table tr.totals-row td {
+            border-top: 2px solid var(--line);
+            border-bottom: none;
+            font-weight: 800;
+            background: var(--fpt-orange-tint);
             color: var(--ink);
-            font-weight: 700;
         }
-
-        .stat-row.urgent span:last-child { color: var(--danger); }
 
         /* ≥ 720px: tablet/desktop — dùng không gian rộng hơn, filter luôn mở */
         @media (min-width: 720px) {
@@ -463,7 +436,6 @@
             }
 
             .ticket-list { grid-template-columns: repeat(2, 1fr); }
-            .cards-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 
             .ticket-fields { grid-template-columns: repeat(3, 1fr); }
             .ticket-action { flex-direction: row; align-items: stretch; flex-wrap: wrap; }
@@ -544,7 +516,7 @@
 
             <!-- TAB 2: CẢNH BÁO -->
             <div id="canhBaoTab" class="tab-content">
-                <div class="cards-grid" id="groupCardsContainer">
+                <div id="groupCardsContainer">
                     <div id="loadingCards" class="loading">⏳ Đang tải cảnh báo...</div>
                 </div>
             </div>
@@ -674,13 +646,8 @@
         // (giữ "tạo checklist" / "đã gửi hình..." để tương thích dữ liệu cũ đã ghi trước đây)
         const RESOLVED_STATUSES = ["đã thu", "đã gửi hình và định vị lên gr", "tạo checklist"];
 
-        // Thứ tự hiển thị chuẩn cho các giá trị của cột Kết Quả (giá trị lạ, chưa biết trước sẽ được thêm vào cuối)
-        // "Chưa thu", "Tạo Checklist", "Đã gửi hình và định vị lên GR" giữ lại để hiển thị đúng dữ liệu cũ đã ghi trước khi đổi danh sách kết quả
-        const KETQUA_ORDER = ["", "Chưa thu", "Không Gặp KH", "Hẹn lại", "Tạo Checklist", "Đã gửi hình và định vị lên GR", "Đã thu"];
-
-        function ketQuaLabel(value) {
-            return value === "" ? "Chưa chọn kết quả" : value;
-        }
+        // Cột cố định cho bảng báo cáo Cảnh Báo — chỉ đúng 4 giá trị Kết Quả này, không hiển thị các giá trị khác
+        const REPORT_STATUSES = ["Chưa thu", "Không Gặp KH", "Hẹn lại", "Đã thu"];
 
         // Cột Kết Quả lưu "Hẹn lại - 15/10/2026 14:30" khi có thời gian hẹn kèm theo.
         // Hàm này tách ra trạng thái gốc (để so khớp option/gộp thống kê) và phần thời gian hẹn (nếu có).
@@ -733,79 +700,77 @@
         }
 
         function renderGroupCards(data) {
-            // Gộp theo KV (không tách theo từng Kỹ thuật nữa) để mỗi khu vực chỉ có 1 thẻ duy nhất,
-            // bên trong liệt kê breakdown theo Kỹ thuật và theo Kết Quả.
+            // Gộp theo (Khu vực + Kỹ thuật): mỗi Kỹ thuật là 1 dòng trong bảng báo cáo
             let groupMap = {};
 
             data.forEach(item => {
                 let kv = String(item.kv || "Chưa phân KV").trim();
                 let kt = String(item.kyThuat || "Chưa phân KT").trim();
+                let groupKey = kv + "||" + kt;
 
-                if (!groupMap[kv]) {
-                    groupMap[kv] = { kv: kv, total: 0, overdue: 0, ktCounts: {}, statusCounts: {} };
+                if (!groupMap[groupKey]) {
+                    groupMap[groupKey] = { kv: kv, kt: kt, total: 0, statusCounts: {} };
                 }
-                let grp = groupMap[kv];
+                let grp = groupMap[groupKey];
                 grp.total++;
-                grp.ktCounts[kt] = (grp.ktCounts[kt] || 0) + 1;
 
                 // Đếm theo trạng thái gốc (bỏ qua phần thời gian hẹn kèm theo, để không bị tách lẻ theo từng giờ hẹn khác nhau)
                 let statusRaw = parseKetQua(item.ketQua).status;
                 grp.statusCounts[statusRaw] = (grp.statusCounts[statusRaw] || 0) + 1;
-
-                // Quá hạn chỉ tính cho phiếu chưa xử lý xong
-                let isResolved = RESOLVED_STATUSES.includes(statusRaw.toLowerCase());
-                if (!isResolved && getPendData(item).days > 3) grp.overdue++;
             });
 
             let sortedGroups = Object.values(groupMap).sort((a, b) => b.total - a.total);
 
             if (sortedGroups.length === 0) {
-                dom.groupCardsContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">🎉 Không có dữ liệu phù hợp với bộ lọc.</div>`;
+                dom.groupCardsContainer.innerHTML = `<div class="empty-state">🎉 Không có dữ liệu phù hợp với bộ lọc.</div>`;
                 return;
             }
 
-            let html = sortedGroups.map(grp => {
-                // Kỹ thuật: xếp theo số phiếu giảm dần
-                let ktRows = Object.entries(grp.ktCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([kt, count]) => `
-                        <div class="stat-row">
-                            <span>${escapeHtml(kt)}</span>
-                            <span>${count} phiếu</span>
-                        </div>`).join('');
+            let headerCells = REPORT_STATUSES.map(s => `<th>${escapeHtml(s)}</th>`).join('');
 
-                // Kết Quả: theo thứ tự chuẩn KETQUA_ORDER, giá trị lạ chưa biết trước xếp cuối (a-z),
-                // luôn hiển thị đủ mọi giá trị (kể cả đếm = 0) để dễ so sánh giữa các khu vực
-                let unknownKeys = Object.keys(grp.statusCounts)
-                    .filter(k => !KETQUA_ORDER.includes(k))
-                    .sort();
-                let orderedKeys = KETQUA_ORDER.concat(unknownKeys);
-                let statusRows = orderedKeys.map(k => `
-                        <div class="stat-row">
-                            <span>${escapeHtml(ketQuaLabel(k))}</span>
-                            <span>${grp.statusCounts[k] || 0} phiếu</span>
-                        </div>`).join('');
+            let bodyRows = sortedGroups.map(grp => {
+                let statusCells = REPORT_STATUSES.map(s =>
+                    `<td class="num">${grp.statusCounts[s] || 0}</td>`
+                ).join('');
 
                 return `
-                <div class="card-item">
-                    <div class="card-header">
-                        <h3 class="card-title-text">🌍 ${escapeHtml(grp.kv)}</h3>
-                        <span class="card-badge">${grp.total} phiếu</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="section-label">⚙️ Theo kỹ thuật phụ trách</div>
-                        ${ktRows}
-                        <div class="section-label">📋 Theo kết quả xử lý</div>
-                        ${statusRows}
-                        <div class="stat-row urgent">
-                            <span>⚠ Quá hạn trên 3 ngày (chưa xử lý)</span>
-                            <span>${grp.overdue} phiếu</span>
-                        </div>
-                    </div>
-                </div>`;
+                    <tr>
+                        <td>${escapeHtml(grp.kv)}</td>
+                        <td>${escapeHtml(grp.kt)}</td>
+                        ${statusCells}
+                        <td class="num col-total">${grp.total}</td>
+                    </tr>`;
             }).join('');
 
-            dom.groupCardsContainer.innerHTML = html;
+            // Dòng tổng cộng cuối bảng
+            let totalsByStatus = REPORT_STATUSES.map(s =>
+                sortedGroups.reduce((sum, g) => sum + (g.statusCounts[s] || 0), 0)
+            );
+            let grandTotal = sortedGroups.reduce((sum, g) => sum + g.total, 0);
+            let totalsRow = `
+                    <tr class="totals-row">
+                        <td colspan="2">Tổng cộng</td>
+                        ${totalsByStatus.map(n => `<td class="num">${n}</td>`).join('')}
+                        <td class="num col-total">${grandTotal}</td>
+                    </tr>`;
+
+            dom.groupCardsContainer.innerHTML = `
+                <div class="table-scroll">
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Khu vực</th>
+                                <th>Kỹ thuật</th>
+                                ${headerCells}
+                                <th>Tổng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${bodyRows}
+                            ${totalsRow}
+                        </tbody>
+                    </table>
+                </div>`;
         }
 
         function renderTickets(data) {

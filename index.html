@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Tồn Phiếu & Cảnh Báo CN60 - FPT</title>
+    <title>Tồn Phiếu & Cảnh Báo Thu Bill - FPT</title>
     <style>
         /*
           Design tokens
@@ -293,6 +293,12 @@
             padding: 4px 10px;
         }
 
+        .chip.is-appointment {
+            color: var(--teal);
+            background: var(--teal-tint);
+            border-color: var(--teal);
+        }
+
         .ticket-note {
             margin: 10px 0 0;
             font-size: 13.5px;
@@ -343,6 +349,20 @@
             font-weight: 700;
             min-height: 44px; /* mục tiêu chạm tối thiểu trên di động */
         }
+
+        .appointment-input {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--teal);
+            font-size: 15px;
+            background-color: var(--teal-tint);
+            color: var(--ink);
+            font-weight: 500;
+            min-height: 42px;
+            width: 100%;
+        }
+
+        .appointment-input:focus { outline: none; border-color: var(--teal); }
 
         .btn-submit:disabled {
             background: #D8D2CD;
@@ -397,6 +417,15 @@
             gap: 9px;
         }
 
+        .section-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--ink-faint);
+            margin-top: 4px;
+        }
+
+        .section-label:first-child { margin-top: 0; }
+
         .stat-row {
             display: flex;
             justify-content: space-between;
@@ -437,8 +466,9 @@
             .cards-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 
             .ticket-fields { grid-template-columns: repeat(3, 1fr); }
-            .ticket-action { flex-direction: row; align-items: stretch; }
+            .ticket-action { flex-direction: row; align-items: stretch; flex-wrap: wrap; }
             .ticket-action select { flex: 1; }
+            .ticket-action .appointment-input { flex: 1 1 200px; width: auto; }
             .ticket-action .btn-submit { flex: 0 0 110px; }
         }
 
@@ -450,7 +480,7 @@
 <body>
 
     <header class="app-header">
-        <h1>🛠️ Tồn Phiếu & Cảnh Báo CN60</h1>
+        <h1>🛠️ Tồn Phiếu & Cảnh Báo Thu Bill</h1>
         <div id="syncText" class="sync-status">✔ Đã đồng bộ</div>
     </header>
 
@@ -458,7 +488,7 @@
         <div class="content-pad">
 
             <div class="tabs-nav">
-                <button class="tab-btn active" onclick="switchTab('tonTab', this)">📋 Tồn Phiếu CN60</button>
+                <button class="tab-btn active" onclick="switchTab('tonTab', this)">📋 Tồn Phiếu Thu Bill</button>
                 <button class="tab-btn" onclick="switchTab('canhBaoTab', this)">📊 Cảnh Báo Khu Vực</button>
             </div>
 
@@ -547,6 +577,21 @@
                 if (btn) submitStatus(Number(btn.dataset.row));
             });
 
+            // Hiện/ẩn ô chọn thời gian hẹn ngay khi đổi lựa chọn Kết Quả
+            dom.ticketList.addEventListener('change', function (e) {
+                let sel = e.target.closest('.ket-qua');
+                if (!sel) return;
+                let rowNumber = sel.id.replace('select_', '');
+                let apptElement = document.getElementById(`appt_${rowNumber}`);
+                if (!apptElement) return;
+                if (sel.value === 'Hẹn lại') {
+                    apptElement.style.display = 'block';
+                } else {
+                    apptElement.style.display = 'none';
+                    apptElement.value = '';
+                }
+            });
+
             loadData();
         };
 
@@ -625,27 +670,60 @@
             }
         }
 
+        // Các trạng thái Kết Quả được xem là đã xử lý xong -> không còn "tồn"
+        // (giữ "tạo checklist" / "đã gửi hình..." để tương thích dữ liệu cũ đã ghi trước đây)
+        const RESOLVED_STATUSES = ["đã thu", "đã gửi hình và định vị lên gr", "tạo checklist"];
+
+        // Thứ tự hiển thị chuẩn cho các giá trị của cột Kết Quả (giá trị lạ, chưa biết trước sẽ được thêm vào cuối)
+        // "Chưa thu", "Tạo Checklist", "Đã gửi hình và định vị lên GR" giữ lại để hiển thị đúng dữ liệu cũ đã ghi trước khi đổi danh sách kết quả
+        const KETQUA_ORDER = ["", "Chưa thu", "Không Gặp KH", "Hẹn lại", "Tạo Checklist", "Đã gửi hình và định vị lên GR", "Đã thu"];
+
+        function ketQuaLabel(value) {
+            return value === "" ? "Chưa chọn kết quả" : value;
+        }
+
+        // Cột Kết Quả lưu "Hẹn lại - 15/10/2026 14:30" khi có thời gian hẹn kèm theo.
+        // Hàm này tách ra trạng thái gốc (để so khớp option/gộp thống kê) và phần thời gian hẹn (nếu có).
+        function parseKetQua(raw) {
+            let val = String(raw || "").trim();
+            let match = val.match(/^Hẹn lại\s*-\s*(.+)$/);
+            if (match) return { status: "Hẹn lại", appointment: match[1].trim() };
+            return { status: val, appointment: "" };
+        }
+
+        // Chuyển giá trị input datetime-local ("2026-10-15T14:30") thành chuỗi dd/mm/yyyy hh:mm để ghi vào Kết Quả
+        function formatAppointment(datetimeLocalValue) {
+            let d = new Date(datetimeLocalValue);
+            if (isNaN(d.getTime())) return datetimeLocalValue;
+            let pad = n => String(n).padStart(2, '0');
+            return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
         function applyFilters() {
             let selectedBlock = dom.filterB.value;
             let selectedKT = dom.filterC.value;
             let selectedKV = dom.filterKV.value;
             let selectedCUS = dom.filterCUS.value;
 
-            let filtered = allData.filter(item => {
-                let status = String(item.ketQua || "").trim().toLowerCase();
-                if (status === "đã thu" || status === "đã gửi hình và định vị lên gr" || status === "tạo checklist") return false;
+            // Dữ liệu theo 4 bộ lọc Block/Kỹ thuật/KV/CUS, giữ nguyên TẤT CẢ giá trị Kết Quả
+            // -> dùng để tính Cảnh Báo cho thấy đầy đủ bức tranh (không chỉ phần còn tồn)
+            let scoped = allData.filter(item =>
+                (!selectedBlock || item.khuVuc === selectedBlock)
+                && (!selectedKT || item.kyThuat === selectedKT)
+                && (!selectedKV || item.kv === selectedKV)
+                && (!selectedCUS || item.cus === selectedCUS)
+            );
 
-                return (!selectedBlock || item.khuVuc === selectedBlock)
-                    && (!selectedKT || item.kyThuat === selectedKT)
-                    && (!selectedKV || item.kv === selectedKV)
-                    && (!selectedCUS || item.cus === selectedCUS);
+            // Chỉ những phiếu chưa xử lý xong -> dùng cho danh sách Tồn Phiếu + số liệu tổng quan
+            let pendingOnly = scoped.filter(item => {
+                let status = parseKetQua(item.ketQua).status.toLowerCase();
+                return !RESOLVED_STATUSES.includes(status);
             });
+            pendingOnly.sort((a, b) => getPendData(b).totalMs - getPendData(a).totalMs);
 
-            filtered.sort((a, b) => getPendData(b).totalMs - getPendData(a).totalMs);
-
-            updateStats(filtered);
-            renderTickets(filtered);
-            renderGroupCards(filtered);
+            updateStats(pendingOnly);
+            renderTickets(pendingOnly);
+            renderGroupCards(scoped);
         }
 
         function updateStats(data) {
@@ -655,49 +733,77 @@
         }
 
         function renderGroupCards(data) {
+            // Gộp theo KV (không tách theo từng Kỹ thuật nữa) để mỗi khu vực chỉ có 1 thẻ duy nhất,
+            // bên trong liệt kê breakdown theo Kỹ thuật và theo Kết Quả.
             let groupMap = {};
 
             data.forEach(item => {
                 let kv = String(item.kv || "Chưa phân KV").trim();
                 let kt = String(item.kyThuat || "Chưa phân KT").trim();
-                let groupKey = kv + " | " + kt;
 
-                if (!groupMap[groupKey]) {
-                    groupMap[groupKey] = { kv: kv, kt: kt, totalTon: 0, urgentTon: 0 };
+                if (!groupMap[kv]) {
+                    groupMap[kv] = { kv: kv, total: 0, overdue: 0, ktCounts: {}, statusCounts: {} };
                 }
+                let grp = groupMap[kv];
+                grp.total++;
+                grp.ktCounts[kt] = (grp.ktCounts[kt] || 0) + 1;
 
-                groupMap[groupKey].totalTon++;
-                if (getPendData(item).days > 3) groupMap[groupKey].urgentTon++;
+                // Đếm theo trạng thái gốc (bỏ qua phần thời gian hẹn kèm theo, để không bị tách lẻ theo từng giờ hẹn khác nhau)
+                let statusRaw = parseKetQua(item.ketQua).status;
+                grp.statusCounts[statusRaw] = (grp.statusCounts[statusRaw] || 0) + 1;
+
+                // Quá hạn chỉ tính cho phiếu chưa xử lý xong
+                let isResolved = RESOLVED_STATUSES.includes(statusRaw.toLowerCase());
+                if (!isResolved && getPendData(item).days > 3) grp.overdue++;
             });
 
-            let sortedGroups = Object.values(groupMap).sort((a, b) => b.totalTon - a.totalTon);
+            let sortedGroups = Object.values(groupMap).sort((a, b) => b.total - a.total);
 
             if (sortedGroups.length === 0) {
-                dom.groupCardsContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">🎉 Không có dữ liệu tồn phù hợp với bộ lọc.</div>`;
+                dom.groupCardsContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">🎉 Không có dữ liệu phù hợp với bộ lọc.</div>`;
                 return;
             }
 
-            let html = sortedGroups.map(grp => `
+            let html = sortedGroups.map(grp => {
+                // Kỹ thuật: xếp theo số phiếu giảm dần
+                let ktRows = Object.entries(grp.ktCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([kt, count]) => `
+                        <div class="stat-row">
+                            <span>${escapeHtml(kt)}</span>
+                            <span>${count} phiếu</span>
+                        </div>`).join('');
+
+                // Kết Quả: theo thứ tự chuẩn KETQUA_ORDER, giá trị lạ chưa biết trước xếp cuối (a-z),
+                // luôn hiển thị đủ mọi giá trị (kể cả đếm = 0) để dễ so sánh giữa các khu vực
+                let unknownKeys = Object.keys(grp.statusCounts)
+                    .filter(k => !KETQUA_ORDER.includes(k))
+                    .sort();
+                let orderedKeys = KETQUA_ORDER.concat(unknownKeys);
+                let statusRows = orderedKeys.map(k => `
+                        <div class="stat-row">
+                            <span>${escapeHtml(ketQuaLabel(k))}</span>
+                            <span>${grp.statusCounts[k] || 0} phiếu</span>
+                        </div>`).join('');
+
+                return `
                 <div class="card-item">
                     <div class="card-header">
                         <h3 class="card-title-text">🌍 ${escapeHtml(grp.kv)}</h3>
-                        <span class="card-badge">${grp.totalTon} phiếu</span>
+                        <span class="card-badge">${grp.total} phiếu</span>
                     </div>
                     <div class="card-body">
-                        <div class="stat-row">
-                            <span>⚙️ Kỹ thuật phụ trách</span>
-                            <span>${escapeHtml(grp.kt)}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span>📦 Tổng tồn khu vực</span>
-                            <span>${grp.totalTon} phiếu</span>
-                        </div>
+                        <div class="section-label">⚙️ Theo kỹ thuật phụ trách</div>
+                        ${ktRows}
+                        <div class="section-label">📋 Theo kết quả xử lý</div>
+                        ${statusRows}
                         <div class="stat-row urgent">
-                            <span>⚠ Quá hạn trên 3 ngày</span>
-                            <span>${grp.urgentTon} phiếu</span>
+                            <span>⚠ Quá hạn trên 3 ngày (chưa xử lý)</span>
+                            <span>${grp.overdue} phiếu</span>
                         </div>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
 
             dom.groupCardsContainer.innerHTML = html;
         }
@@ -717,10 +823,8 @@
                                 isDanger ? `<span class="badge-warning">⚠ ${pendText}</span>` :
                                 `<span class="badge-normal">${pendText}</span>`;
 
-                let isCN60 = String(item.kv || "").toUpperCase().includes("CN60");
-                let extraOption = isCN60 ?
-                    `<option value="Đã gửi hình và định vị lên GR" ${item.ketQua === "Đã gửi hình và định vị lên GR" ? "selected" : ""}>Đã gửi hình và định vị lên GR</option>` :
-                    `<option value="Tạo Checklist" ${item.ketQua === "Tạo Checklist" ? "selected" : ""}>Tạo Checklist</option>`;
+                let parsedKQ = parseKetQua(item.ketQua);
+                let isHenLai = parsedKQ.status === "Hẹn lại";
 
                 return `
                     <div class="ticket-card ${isDanger ? 'is-overdue' : ''}">
@@ -733,6 +837,7 @@
                             <span class="chip">⚙️ ${escapeHtml(item.kyThuat)}</span>
                             <span class="chip">🌍 ${escapeHtml(item.kv)}</span>
                             ${item.cus ? `<span class="chip">👤 ${escapeHtml(item.cus)}</span>` : ''}
+                            ${parsedKQ.appointment ? `<span class="chip is-appointment">🕒 Hẹn: ${escapeHtml(parsedKQ.appointment)}</span>` : ''}
                         </div>
                         ${item.ghiChu ? `<p class="ticket-note">${escapeHtml(item.ghiChu)}</p>` : ''}
                         ${item.noiDung ? `<p class="ticket-note is-secondary">${escapeHtml(item.noiDung)}</p>` : ''}
@@ -743,12 +848,12 @@
                         </div>
                         <div class="ticket-action">
                             <select class="ket-qua" id="select_${item.row}">
-                                <option value="" ${item.ketQua === "" ? "selected" : ""}>-- Chọn kết quả --</option>
-                                <option value="Đã thu" ${item.ketQua === "Đã thu" ? "selected" : ""}>Đã thu</option>
-                                <option value="Chưa thu" ${item.ketQua === "Chưa thu" ? "selected" : ""}>Chưa thu</option>
-                                <option value="Hẹn lại" ${item.ketQua === "Hẹn lại" ? "selected" : ""}>Hẹn lại</option>
-                                ${extraOption}
+                                <option value="" ${parsedKQ.status === "" ? "selected" : ""}>-- Chọn kết quả --</option>
+                                <option value="Đã thu" ${parsedKQ.status === "Đã thu" ? "selected" : ""}>Đã thu</option>
+                                <option value="Không Gặp KH" ${parsedKQ.status === "Không Gặp KH" ? "selected" : ""}>Không Gặp KH</option>
+                                <option value="Hẹn lại" ${isHenLai ? "selected" : ""}>Hẹn lại</option>
                             </select>
+                            <input type="datetime-local" class="appointment-input" id="appt_${item.row}" style="display:${isHenLai ? 'block' : 'none'};">
                             <button class="btn-submit" id="btn_${item.row}" data-row="${item.row}">Gửi</button>
                         </div>
                     </div>`;
@@ -760,7 +865,17 @@
         function submitStatus(rowNumber) {
             let selectElement = document.getElementById(`select_${rowNumber}`);
             let btnElement = document.getElementById(`btn_${rowNumber}`);
-            let value = selectElement.value;
+            let apptElement = document.getElementById(`appt_${rowNumber}`);
+            let status = selectElement.value;
+            let value = status;
+
+            if (status === "Hẹn lại") {
+                if (!apptElement || !apptElement.value) {
+                    alert("Vui lòng chọn thời gian hẹn trước khi gửi.");
+                    return;
+                }
+                value = `Hẹn lại - ${formatAppointment(apptElement.value)}`;
+            }
 
             btnElement.innerText = "Đang gửi...";
             btnElement.disabled = true;

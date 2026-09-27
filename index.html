@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Tồn Phiếu & Cảnh Báo Thu Bill - FPT</title>
+    <title>Tồn Phiếu & Report Thu Bill - FPT</title>
     <style>
         /*
           Design tokens
@@ -28,6 +28,8 @@
             --danger-tint: #FCEBE8;
             --success: #1F9D6E;
             --success-tint: #E7F7EF;
+            --gold: #C8891A;
+            --gold-tint: #FCF3DF;
             --radius-lg: 18px;
             --radius-md: 12px;
             --radius-sm: 8px;
@@ -75,6 +77,13 @@
             font-size: 17px;
             font-weight: 800;
             letter-spacing: 0.1px;
+        }
+
+        .header-tagline {
+            margin: 2px 0 0;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85);
         }
 
         .sync-status {
@@ -129,6 +138,144 @@
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+
+        /* BANNER ĐỘNG VIÊN — thanh tiến độ thu bill theo bộ lọc hiện tại, để tạo động lực */
+        .motivation-banner {
+            background: linear-gradient(135deg, var(--fpt-orange) 0%, var(--fpt-orange-dark) 100%);
+            color: white;
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 6px 18px rgba(196, 63, 19, 0.25);
+        }
+
+        .motivation-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .motivation-msg {
+            font-size: 13.5px;
+            font-weight: 700;
+        }
+
+        .motivation-rate-label {
+            font-size: 16px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .progress-track {
+            background: rgba(255, 255, 255, 0.28);
+            border-radius: 20px;
+            height: 9px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.5s ease;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .progress-fill { transition: none; }
+        }
+
+        .motivation-sub {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        /* BẢNG XẾP HẠNG — top kỹ thuật thu bill tốt nhất theo bộ lọc hiện tại */
+        .leaderboard {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-bottom: 14px;
+        }
+
+        .leaderboard-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--ink-soft);
+            margin-bottom: 8px;
+        }
+
+        .leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--bg);
+        }
+
+        .leaderboard-item:first-child {
+            background: var(--gold-tint);
+            border: 1px solid var(--gold);
+        }
+
+        .leaderboard-item .medal { font-size: 16px; }
+
+        .leaderboard-item .lb-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .leaderboard-item .lb-count {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: var(--success);
+        }
+
+        .leaderboard-empty {
+            font-size: 12.5px;
+            color: var(--ink-soft);
+            font-weight: 600;
+            padding: 6px 2px;
+        }
+
+        /* TOAST ĂN MỪNG — hiện khi gửi kết quả "Đã thu" thành công */
+        .celebration {
+            position: fixed;
+            left: 50%;
+            bottom: 20px;
+            transform: translate(-50%, 16px);
+            background: var(--success);
+            color: white;
+            padding: 12px 22px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 14px;
+            box-shadow: 0 10px 26px rgba(31, 157, 110, 0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 50;
+        }
+
+        .celebration.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .celebration { transition: none; }
+        }
 
         /* STATS STRIP — con số cần biết ngay khi mở app */
         .stats-strip {
@@ -469,7 +616,10 @@
 <body>
 
     <header class="app-header">
-        <h1>🛠️ Tồn Phiếu & Cảnh Báo Thu Bill</h1>
+        <div>
+            <h1>🛠️ Tồn Phiếu & Report Thu Bill</h1>
+            <p class="header-tagline">💪 Mỗi phiếu thu về là một chiến thắng nhỏ!</p>
+        </div>
         <div id="syncText" class="sync-status">✔ Đã đồng bộ</div>
     </header>
 
@@ -478,7 +628,23 @@
 
             <div class="tabs-nav">
                 <button class="tab-btn active" onclick="switchTab('tonTab', this)">📋 Tồn Phiếu Thu Bill</button>
-                <button class="tab-btn" onclick="switchTab('canhBaoTab', this)">📊 Cảnh Báo Khu Vực</button>
+                <button class="tab-btn" onclick="switchTab('canhBaoTab', this)">📊 Report Khu Vực</button>
+            </div>
+
+            <div class="motivation-banner">
+                <div class="motivation-top">
+                    <span class="motivation-msg" id="motivationMsg">🚀 Đang tải tiến độ...</span>
+                    <span class="motivation-rate-label" id="motivationRateLabel">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="motivationRate" style="width:0%"></div>
+                </div>
+                <div class="motivation-sub">Đã thu <strong id="motivationCollected">0</strong> / <span id="motivationTotal">0</span> phiếu theo bộ lọc hiện tại</div>
+            </div>
+
+            <div class="leaderboard">
+                <div class="leaderboard-title">🏆 Top kỹ thuật thu bill tốt nhất</div>
+                <div class="leaderboard-list" id="leaderboardList"></div>
             </div>
 
             <div class="stats-strip">
@@ -534,16 +700,19 @@
             <!-- TAB 2: CẢNH BÁO -->
             <div id="canhBaoTab" class="tab-content">
                 <div id="groupCardsContainer">
-                    <div id="loadingCards" class="loading">⏳ Đang tải cảnh báo...</div>
+                    <div id="loadingCards" class="loading">⏳ Đang tải report...</div>
                 </div>
             </div>
 
         </div>
     </div>
 
+    <div class="celebration" id="celebration">🎉 Thu bill thành công! Tuyệt vời! 🎉</div>
+
     <script>
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwZHOvMbeS6Z87Cd77b4Q9HliNmFKkANQQB-x0-28EeoIsOFHA6AwjWwBZ95pnGxoCo/exec";
         let allData = [];
+        let lastSubmittedStatus = null;
 
         // Cache DOM dùng nhiều lần
         const dom = {};
@@ -559,6 +728,13 @@
             dom.filterCUS = document.getElementById('filterCUS');
             dom.statTotal = document.getElementById('statTotal');
             dom.statOverdue = document.getElementById('statOverdue');
+            dom.motivationMsg = document.getElementById('motivationMsg');
+            dom.motivationRate = document.getElementById('motivationRate');
+            dom.motivationRateLabel = document.getElementById('motivationRateLabel');
+            dom.motivationCollected = document.getElementById('motivationCollected');
+            dom.motivationTotal = document.getElementById('motivationTotal');
+            dom.leaderboardList = document.getElementById('leaderboardList');
+            dom.celebration = document.getElementById('celebration');
 
             // 1 listener duy nhất cho cả danh sách thay vì gắn onclick từng nút "Gửi"
             dom.ticketList.addEventListener('click', function (e) {
@@ -675,8 +851,8 @@
         // (giữ "tạo checklist" / "đã gửi hình..." để tương thích dữ liệu cũ đã ghi trước đây)
         const RESOLVED_STATUSES = ["đã thu", "đã gửi hình và định vị lên gr", "tạo checklist"];
 
-        // Cột cố định cho bảng báo cáo Cảnh Báo — chỉ đúng 4 giá trị Kết Quả này, không hiển thị các giá trị khác
-        const REPORT_STATUSES = ["Chưa thu", "Không Gặp KH", "Hẹn lại", "Đã thu"];
+        // Cột cố định cho bảng Report — đúng các giá trị Kết Quả này, không hiển thị các giá trị khác
+        const REPORT_STATUSES = ["Chưa thu", "Không Gặp KH", "Gặp KH báo huỷ", "Hẹn lại", "Đã thu"];
 
         // Cột Kết Quả lưu "Hẹn lại - 15/10/2026 14:30" khi có thời gian hẹn kèm theo.
         // Hàm này tách ra trạng thái gốc (để so khớp option/gộp thống kê) và phần thời gian hẹn (nếu có).
@@ -702,7 +878,7 @@
             let selectedCUS = dom.filterCUS.value;
 
             // Dữ liệu theo 4 bộ lọc Block/Kỹ thuật/KV/CUS, giữ nguyên TẤT CẢ giá trị Kết Quả
-            // -> dùng để tính Cảnh Báo cho thấy đầy đủ bức tranh (không chỉ phần còn tồn)
+            // -> dùng để tính Report cho thấy đầy đủ bức tranh (không chỉ phần còn tồn)
             let scoped = allData.filter(item =>
                 (!selectedBlock || item.khuVuc === selectedBlock)
                 && (!selectedKT || item.kyThuat === selectedKT)
@@ -720,12 +896,58 @@
             updateStats(pendingOnly);
             renderTickets(pendingOnly);
             renderGroupCards(scoped);
+            renderMotivation(scoped);
         }
 
         function updateStats(data) {
             let overdue = data.reduce((n, item) => n + (getPendData(item).days > 3 ? 1 : 0), 0);
             dom.statTotal.textContent = data.length;
             dom.statOverdue.textContent = overdue;
+        }
+
+        function renderMotivation(data) {
+            let total = data.length;
+            let collected = data.reduce((n, item) => n + (parseKetQua(item.ketQua).status === "Đã thu" ? 1 : 0), 0);
+            let rate = total > 0 ? Math.round((collected / total) * 100) : 0;
+
+            dom.motivationRate.style.width = rate + '%';
+            dom.motivationRateLabel.textContent = rate + '%';
+            dom.motivationCollected.textContent = collected;
+            dom.motivationTotal.textContent = total;
+
+            let msg;
+            if (total === 0) msg = "📭 Không có phiếu nào khớp bộ lọc hiện tại.";
+            else if (rate >= 80) msg = "🔥 Cực đỉnh! Sắp cán đích rồi anh em ơi!";
+            else if (rate >= 50) msg = "💪 Hơn nửa chặng đường rồi, tiếp tục nào!";
+            else if (collected > 0) msg = "🚀 Khởi động tốt, cố lên nhé!";
+            else msg = "🚀 Hôm nay chưa có phiếu nào được thu — bắt đầu ngay thôi!";
+            dom.motivationMsg.textContent = msg;
+
+            // Xếp hạng theo số phiếu "Đã thu" của từng Kỹ thuật trong phạm vi bộ lọc hiện tại
+            let ktMap = {};
+            data.forEach(item => {
+                let kt = String(item.kyThuat || "Chưa phân KT").trim();
+                if (!ktMap[kt]) ktMap[kt] = { kt: kt, collected: 0 };
+                if (parseKetQua(item.ketQua).status === "Đã thu") ktMap[kt].collected++;
+            });
+
+            let ranked = Object.values(ktMap)
+                .filter(k => k.collected > 0)
+                .sort((a, b) => b.collected - a.collected)
+                .slice(0, 3);
+
+            if (ranked.length === 0) {
+                dom.leaderboardList.innerHTML = `<div class="leaderboard-empty">Chưa có ai thu được bill nào trong bộ lọc hiện tại — hãy là người đầu tiên! 🚀</div>`;
+                return;
+            }
+
+            const medals = ['🥇', '🥈', '🥉'];
+            dom.leaderboardList.innerHTML = ranked.map((r, i) => `
+                <div class="leaderboard-item">
+                    <span class="medal">${medals[i]}</span>
+                    <span class="lb-name">${escapeHtml(r.kt)}</span>
+                    <span class="lb-count">${r.collected} bill</span>
+                </div>`).join('');
         }
 
         function renderGroupCards(data) {
@@ -744,7 +966,8 @@
                 grp.total++;
 
                 // Đếm theo trạng thái gốc (bỏ qua phần thời gian hẹn kèm theo, để không bị tách lẻ theo từng giờ hẹn khác nhau)
-                let statusRaw = parseKetQua(item.ketQua).status;
+                // Kết Quả để trống (chưa chọn) mặc định tính là "Chưa thu"
+                let statusRaw = parseKetQua(item.ketQua).status || "Chưa thu";
                 grp.statusCounts[statusRaw] = (grp.statusCounts[statusRaw] || 0) + 1;
             });
 
@@ -883,6 +1106,7 @@
 
             btnElement.innerText = "Đang gửi...";
             btnElement.disabled = true;
+            lastSubmittedStatus = status;
 
             let oldUpdateScript = document.getElementById('jsonp_update_script');
             if (oldUpdateScript) oldUpdateScript.remove();
@@ -904,7 +1128,18 @@
                 return s && s !== "#N/A";
             });
 
+            if (lastSubmittedStatus === "Đã thu") showCelebration();
+            lastSubmittedStatus = null;
+
             applyFilters();
+        }
+
+        // Toast ăn mừng ngắn khi thu bill thành công, để tạo động lực tức thì cho KTV
+        let celebrationTimer = null;
+        function showCelebration() {
+            dom.celebration.classList.add('show');
+            clearTimeout(celebrationTimer);
+            celebrationTimer = setTimeout(() => dom.celebration.classList.remove('show'), 2200);
         }
     </script>
 </body>

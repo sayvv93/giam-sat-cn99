@@ -408,6 +408,20 @@
             border-radius: var(--radius-lg);
         }
 
+        .retry-btn {
+            display: inline-block;
+            margin-top: 10px;
+            margin-left: 4px;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 20px;
+            background: var(--fpt-orange);
+            color: white;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
         .ticket-card {
             background: var(--surface);
             border: 1px solid var(--line);
@@ -823,6 +837,15 @@
                 }
             });
 
+            // Hiện ngay dữ liệu lần tải trước (nếu có) trong lúc chờ dữ liệu mới nhất từ server,
+            // để không phải nhìn màn hình trống/loading mỗi lần mở lại trang
+            try {
+                let cached = localStorage.getItem(DATA_CACHE_KEY);
+                if (cached) handleData(JSON.parse(cached));
+            } catch (err) {
+                // Bỏ qua nếu cache lỗi/hỏng — vẫn tải dữ liệu mới bình thường ở bước dưới
+            }
+
             loadData();
         };
 
@@ -833,6 +856,12 @@
             btnElement.classList.add('active');
         }
 
+        const DATA_CACHE_KEY = 'thubill_data_cache_v1';
+        const LOAD_TIMEOUT_MS = 10000; // quá 10s chưa có dữ liệu -> tự thử lại
+        const MAX_AUTO_RETRY = 2;
+        let loadTimeoutHandle = null;
+        let autoRetryCount = 0;
+
         function loadData() {
             let oldScript = document.getElementById('jsonp_data_script');
             if (oldScript) oldScript.remove();
@@ -841,9 +870,31 @@
             script.id = 'jsonp_data_script';
             script.src = `${WEB_APP_URL}?callback=handleData&_=${Date.now()}`;
             document.body.appendChild(script);
+
+            // Tự động thử lại nếu tải quá lâu (ví dụ Apps Script "cold start" chậm),
+            // thay vì để người dùng nhìn vòng xoay tải mãi không rõ có bị treo hay không
+            clearTimeout(loadTimeoutHandle);
+            loadTimeoutHandle = setTimeout(() => {
+                if (autoRetryCount < MAX_AUTO_RETRY) {
+                    autoRetryCount++;
+                    loadData();
+                } else {
+                    dom.loading.innerHTML = `⚠️ Tải dữ liệu hơi lâu, mạng hoặc máy chủ đang chậm.
+                        <button class="retry-btn" onclick="manualRetryLoad()">Thử lại</button>`;
+                }
+            }, LOAD_TIMEOUT_MS);
+        }
+
+        function manualRetryLoad() {
+            autoRetryCount = 0;
+            dom.loading.innerHTML = '⏳ Đang tải dữ liệu...';
+            loadData();
         }
 
         function handleData(data) {
+            clearTimeout(loadTimeoutHandle);
+            autoRetryCount = 0;
+
             allData = data.filter(item => {
                 let s = String(item.shd || "").trim();
                 return s && s !== "#N/A";
@@ -854,6 +905,13 @@
 
             initFilters();
             applyFilters();
+
+            // Lưu lại để lần mở trang sau hiển thị ngay (dữ liệu tạm), không phải chờ tải xong mới thấy gì
+            try {
+                localStorage.setItem(DATA_CACHE_KEY, JSON.stringify(data));
+            } catch (err) {
+                // Bỏ qua nếu trình duyệt chặn localStorage hoặc hết dung lượng — không ảnh hưởng chức năng chính
+            }
         }
 
         function getPendData(item) {

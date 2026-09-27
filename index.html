@@ -173,16 +173,15 @@
             border-radius: 20px;
             height: 9px;
             overflow: hidden;
+            display: flex;
         }
 
-        .progress-fill {
-            background: white;
+        .progress-segment {
             height: 100%;
-            border-radius: 20px;
             transition: width 0.5s ease;
         }
         @media (prefers-reduced-motion: reduce) {
-            .progress-fill { transition: none; }
+            .progress-segment { transition: none; }
         }
 
         .motivation-sub {
@@ -190,6 +189,30 @@
             font-size: 12px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.85);
+        }
+
+        .motivation-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 14px;
+            margin-top: 8px;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: nowrap;
+        }
+
+        .legend-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
         /* BẢNG XẾP HẠNG — top kỹ thuật thu bill tốt nhất theo bộ lọc hiện tại */
@@ -573,6 +596,37 @@
 
         .report-table td.col-total { font-weight: 800; color: var(--ink); }
 
+        .report-table td.rate-cell, .report-table th.rate-th {
+            text-align: left;
+        }
+
+        .mini-progress-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mini-progress {
+            width: 56px;
+            height: 6px;
+            background: var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 10px;
+        }
+
+        .mini-progress-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+        }
+
         .report-table tr.totals-row td {
             border-top: 2px solid var(--line);
             border-bottom: none;
@@ -636,10 +690,9 @@
                     <span class="motivation-msg" id="motivationMsg">🚀 Đang tải tiến độ...</span>
                     <span class="motivation-rate-label" id="motivationRateLabel">0%</span>
                 </div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="motivationRate" style="width:0%"></div>
-                </div>
+                <div class="progress-track" id="motivationTrack"></div>
                 <div class="motivation-sub">Đã thu <strong id="motivationCollected">0</strong> / <span id="motivationTotal">0</span> phiếu theo bộ lọc hiện tại</div>
+                <div class="motivation-legend" id="motivationLegend"></div>
             </div>
 
             <div class="leaderboard">
@@ -729,7 +782,8 @@
             dom.statTotal = document.getElementById('statTotal');
             dom.statOverdue = document.getElementById('statOverdue');
             dom.motivationMsg = document.getElementById('motivationMsg');
-            dom.motivationRate = document.getElementById('motivationRate');
+            dom.motivationTrack = document.getElementById('motivationTrack');
+            dom.motivationLegend = document.getElementById('motivationLegend');
             dom.motivationRateLabel = document.getElementById('motivationRateLabel');
             dom.motivationCollected = document.getElementById('motivationCollected');
             dom.motivationTotal = document.getElementById('motivationTotal');
@@ -760,7 +814,7 @@
                 }
 
                 if (noteElement) {
-                    if (sel.value === 'Hẹn lại' || sel.value === 'Không Gặp KH' || sel.value === 'Gặp KH báo huỷ') {
+                    if (sel.value === 'Hẹn lại' || sel.value === 'Không Gặp KH' || sel.value === 'Gặp KH báo huỷ' || sel.value === 'Thu modem-Bill Notok') {
                         noteElement.style.display = 'block';
                     } else {
                         noteElement.style.display = 'none';
@@ -849,10 +903,10 @@
 
         // Các trạng thái Kết Quả được xem là đã xử lý xong -> không còn "tồn"
         // (giữ "tạo checklist" / "đã gửi hình..." để tương thích dữ liệu cũ đã ghi trước đây)
-        const RESOLVED_STATUSES = ["đã thu", "đã gửi hình và định vị lên gr", "tạo checklist"];
+        const RESOLVED_STATUSES = ["đã thu", "đã gửi hình và định vị lên gr", "tạo checklist", "thu modem-bill notok"];
 
         // Cột cố định cho bảng Report — đúng các giá trị Kết Quả này, không hiển thị các giá trị khác
-        const REPORT_STATUSES = ["Chưa thu", "Không Gặp KH", "Gặp KH báo huỷ", "Hẹn lại", "Đã thu"];
+        const REPORT_STATUSES = ["Chưa thu", "Không Gặp KH", "Gặp KH báo huỷ", "Thu modem-Bill Notok", "Hẹn lại", "Đã thu"];
 
         // Cột Kết Quả lưu "Hẹn lại - 15/10/2026 14:30" khi có thời gian hẹn kèm theo.
         // Hàm này tách ra trạng thái gốc (để so khớp option/gộp thống kê) và phần thời gian hẹn (nếu có).
@@ -905,12 +959,30 @@
             dom.statOverdue.textContent = overdue;
         }
 
+        // Màu riêng cho từng trạng thái trên thanh tiến độ + chú giải (đồng bộ với bảng Report)
+        const STATUS_COLORS = {
+            "Chưa thu": "rgba(255,255,255,0.3)",
+            "Không Gặp KH": "#7A4419",
+            "Gặp KH báo huỷ": "#4A4642",
+            "Thu modem-Bill Notok": "var(--gold)",
+            "Hẹn lại": "var(--teal)",
+            "Đã thu": "#FFFFFF"
+        };
+
         function renderMotivation(data) {
             let total = data.length;
-            let collected = data.reduce((n, item) => n + (parseKetQua(item.ketQua).status === "Đã thu" ? 1 : 0), 0);
+
+            // Đếm theo từng trạng thái Kết Quả (để trống mặc định tính là "Chưa thu")
+            let counts = {};
+            REPORT_STATUSES.forEach(s => counts[s] = 0);
+            data.forEach(item => {
+                let status = parseKetQua(item.ketQua).status || "Chưa thu";
+                counts[status] = (counts[status] || 0) + 1;
+            });
+
+            let collected = counts["Đã thu"] || 0;
             let rate = total > 0 ? Math.round((collected / total) * 100) : 0;
 
-            dom.motivationRate.style.width = rate + '%';
             dom.motivationRateLabel.textContent = rate + '%';
             dom.motivationCollected.textContent = collected;
             dom.motivationTotal.textContent = total;
@@ -922,6 +994,21 @@
             else if (collected > 0) msg = "🚀 Khởi động tốt, cố lên nhé!";
             else msg = "🚀 Hôm nay chưa có phiếu nào được thu — bắt đầu ngay thôi!";
             dom.motivationMsg.textContent = msg;
+
+            // Thanh tiến độ chia đoạn: gộp đủ TẤT CẢ các trạng thái (không chỉ riêng Đã thu)
+            dom.motivationTrack.innerHTML = total === 0 ? '' : REPORT_STATUSES.map(s => {
+                let count = counts[s] || 0;
+                if (count === 0) return '';
+                let pct = (count / total) * 100;
+                return `<div class="progress-segment" style="width:${pct}%; background:${STATUS_COLORS[s]};" title="${escapeHtml(s)}: ${count} phiếu"></div>`;
+            }).join('');
+
+            // Chú giải màu cho từng trạng thái, kèm số lượng cụ thể
+            dom.motivationLegend.innerHTML = REPORT_STATUSES.map(s => `
+                <span class="legend-item">
+                    <span class="legend-dot" style="background:${STATUS_COLORS[s]};"></span>
+                    ${escapeHtml(s)}: <strong>${counts[s] || 0}</strong>
+                </span>`).join('');
 
             // Xếp hạng theo số phiếu "Đã thu" của từng Kỹ thuật trong phạm vi bộ lọc hiện tại
             let ktMap = {};
@@ -980,6 +1067,17 @@
 
             let headerCells = REPORT_STATUSES.map(s => `<th>${escapeHtml(s)}</th>`).join('');
 
+            // Thanh mini để "chia nhỏ" tỷ lệ Đã thu cho từng dòng, ngoài thanh tổng ở banner phía trên
+            function rateCell(collected, total) {
+                let rate = total > 0 ? Math.round((collected / total) * 100) : 0;
+                return `<td class="rate-cell">
+                            <div class="mini-progress-wrap">
+                                <div class="mini-progress"><div class="mini-progress-fill" style="width:${rate}%"></div></div>
+                                <span class="mini-progress-label">${rate}%</span>
+                            </div>
+                        </td>`;
+            }
+
             let bodyRows = sortedGroups.map(grp => {
                 let statusCells = REPORT_STATUSES.map(s =>
                     `<td class="num">${grp.statusCounts[s] || 0}</td>`
@@ -991,6 +1089,7 @@
                         <td>${escapeHtml(grp.kt)}</td>
                         ${statusCells}
                         <td class="num col-total">${grp.total}</td>
+                        ${rateCell(grp.statusCounts["Đã thu"] || 0, grp.total)}
                     </tr>`;
             }).join('');
 
@@ -999,11 +1098,13 @@
                 sortedGroups.reduce((sum, g) => sum + (g.statusCounts[s] || 0), 0)
             );
             let grandTotal = sortedGroups.reduce((sum, g) => sum + g.total, 0);
+            let grandCollected = sortedGroups.reduce((sum, g) => sum + (g.statusCounts["Đã thu"] || 0), 0);
             let totalsRow = `
                     <tr class="totals-row">
                         <td colspan="2">Tổng cộng</td>
                         ${totalsByStatus.map(n => `<td class="num">${n}</td>`).join('')}
                         <td class="num col-total">${grandTotal}</td>
+                        ${rateCell(grandCollected, grandTotal)}
                     </tr>`;
 
             dom.groupCardsContainer.innerHTML = `
@@ -1015,6 +1116,7 @@
                                 <th>Kỹ thuật</th>
                                 ${headerCells}
                                 <th>Tổng</th>
+                                <th class="rate-th">Tỷ lệ đã thu</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1042,7 +1144,7 @@
 
                 let parsedKQ = parseKetQua(item.ketQua);
                 let isHenLai = parsedKQ.status === "Hẹn lại";
-                let showNote = isHenLai || parsedKQ.status === "Không Gặp KH" || parsedKQ.status === "Gặp KH báo huỷ";
+                let showNote = isHenLai || parsedKQ.status === "Không Gặp KH" || parsedKQ.status === "Gặp KH báo huỷ" || parsedKQ.status === "Thu modem-Bill Notok";
 
                 return `
                     <div class="ticket-card ${isDanger ? 'is-overdue' : ''}">
@@ -1070,6 +1172,7 @@
                                 <option value="Đã thu" ${parsedKQ.status === "Đã thu" ? "selected" : ""}>Đã thu</option>
                                 <option value="Không Gặp KH" ${parsedKQ.status === "Không Gặp KH" ? "selected" : ""}>Không Gặp KH</option>
                                 <option value="Gặp KH báo huỷ" ${parsedKQ.status === "Gặp KH báo huỷ" ? "selected" : ""}>Gặp KH báo huỷ</option>
+                                <option value="Thu modem-Bill Notok" ${parsedKQ.status === "Thu modem-Bill Notok" ? "selected" : ""}>Thu modem-Bill Notok</option>
                                 <option value="Hẹn lại" ${isHenLai ? "selected" : ""}>Hẹn lại</option>
                             </select>
                             <input type="datetime-local" class="appointment-input" id="appt_${item.row}" style="display:${isHenLai ? 'block' : 'none'};">
@@ -1098,9 +1201,9 @@
                 value = `Hẹn lại - ${formatAppointment(apptElement.value)}`;
             }
 
-            // Ghi chú áp dụng cho "Hẹn lại", "Không Gặp KH" và "Gặp KH báo huỷ", để trống thì không ghi đè cột D
+            // Ghi chú áp dụng cho "Hẹn lại", "Không Gặp KH", "Gặp KH báo huỷ" và "Thu modem-Bill Notok", để trống thì không ghi đè cột D
             let noteValue = "";
-            if ((status === "Hẹn lại" || status === "Không Gặp KH" || status === "Gặp KH báo huỷ") && noteElement) {
+            if ((status === "Hẹn lại" || status === "Không Gặp KH" || status === "Gặp KH báo huỷ" || status === "Thu modem-Bill Notok") && noteElement) {
                 noteValue = noteElement.value.trim();
             }
 

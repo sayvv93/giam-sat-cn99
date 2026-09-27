@@ -364,6 +364,22 @@
 
         .appointment-input:focus { outline: none; border-color: var(--teal); }
 
+        .note-input {
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--line);
+            font-size: 15px; /* >=16px hợp lý, tránh Safari tự zoom khi focus */
+            background-color: var(--bg);
+            color: var(--ink);
+            font-weight: 500;
+            min-height: 60px;
+            width: 100%;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .note-input:focus { outline: none; border-color: var(--fpt-orange); }
+
         .btn-submit:disabled {
             background: #D8D2CD;
             cursor: not-allowed;
@@ -441,7 +457,8 @@
             .ticket-action { flex-direction: row; align-items: stretch; flex-wrap: wrap; }
             .ticket-action select { flex: 1; }
             .ticket-action .appointment-input { flex: 1 1 200px; width: auto; }
-            .ticket-action .btn-submit { flex: 0 0 110px; }
+            .ticket-action .note-input { flex: 1 1 100%; width: auto; order: 2; }
+            .ticket-action .btn-submit { flex: 0 0 110px; order: 3; }
         }
 
         @media (min-width: 1100px) {
@@ -549,18 +566,30 @@
                 if (btn) submitStatus(Number(btn.dataset.row));
             });
 
-            // Hiện/ẩn ô chọn thời gian hẹn ngay khi đổi lựa chọn Kết Quả
+            // Hiện/ẩn ô chọn thời gian hẹn + ô nhập ghi chú ngay khi đổi lựa chọn Kết Quả
             dom.ticketList.addEventListener('change', function (e) {
                 let sel = e.target.closest('.ket-qua');
                 if (!sel) return;
                 let rowNumber = sel.id.replace('select_', '');
                 let apptElement = document.getElementById(`appt_${rowNumber}`);
-                if (!apptElement) return;
-                if (sel.value === 'Hẹn lại') {
-                    apptElement.style.display = 'block';
-                } else {
-                    apptElement.style.display = 'none';
-                    apptElement.value = '';
+                let noteElement = document.getElementById(`note_${rowNumber}`);
+
+                if (apptElement) {
+                    if (sel.value === 'Hẹn lại') {
+                        apptElement.style.display = 'block';
+                    } else {
+                        apptElement.style.display = 'none';
+                        apptElement.value = '';
+                    }
+                }
+
+                if (noteElement) {
+                    if (sel.value === 'Hẹn lại' || sel.value === 'Không Gặp KH') {
+                        noteElement.style.display = 'block';
+                    } else {
+                        noteElement.style.display = 'none';
+                        noteElement.value = '';
+                    }
                 }
             });
 
@@ -790,6 +819,7 @@
 
                 let parsedKQ = parseKetQua(item.ketQua);
                 let isHenLai = parsedKQ.status === "Hẹn lại";
+                let showNote = isHenLai || parsedKQ.status === "Không Gặp KH";
 
                 return `
                     <div class="ticket-card ${isDanger ? 'is-overdue' : ''}">
@@ -819,6 +849,7 @@
                                 <option value="Hẹn lại" ${isHenLai ? "selected" : ""}>Hẹn lại</option>
                             </select>
                             <input type="datetime-local" class="appointment-input" id="appt_${item.row}" style="display:${isHenLai ? 'block' : 'none'};">
+                            <textarea class="note-input" id="note_${item.row}" placeholder="Nhập ghi chú (sẽ ghi đè Ghi Chú hiện tại của phiếu)..." style="display:${showNote ? 'block' : 'none'};"></textarea>
                             <button class="btn-submit" id="btn_${item.row}" data-row="${item.row}">Gửi</button>
                         </div>
                     </div>`;
@@ -831,6 +862,7 @@
             let selectElement = document.getElementById(`select_${rowNumber}`);
             let btnElement = document.getElementById(`btn_${rowNumber}`);
             let apptElement = document.getElementById(`appt_${rowNumber}`);
+            let noteElement = document.getElementById(`note_${rowNumber}`);
             let status = selectElement.value;
             let value = status;
 
@@ -842,6 +874,12 @@
                 value = `Hẹn lại - ${formatAppointment(apptElement.value)}`;
             }
 
+            // Ghi chú chỉ áp dụng cho "Hẹn lại" và "Không Gặp KH", để trống thì không ghi đè cột D
+            let noteValue = "";
+            if ((status === "Hẹn lại" || status === "Không Gặp KH") && noteElement) {
+                noteValue = noteElement.value.trim();
+            }
+
             btnElement.innerText = "Đang gửi...";
             btnElement.disabled = true;
 
@@ -850,7 +888,9 @@
 
             let updateScript = document.createElement('script');
             updateScript.id = 'jsonp_update_script';
-            updateScript.src = `${WEB_APP_URL}?row=${rowNumber}&value=${encodeURIComponent(value)}&callback=handleUpdateComplete&_=${Date.now()}`;
+            let updateUrl = `${WEB_APP_URL}?row=${rowNumber}&value=${encodeURIComponent(value)}&callback=handleUpdateComplete&_=${Date.now()}`;
+            if (noteValue) updateUrl += `&note=${encodeURIComponent(noteValue)}`;
+            updateScript.src = updateUrl;
             document.body.appendChild(updateScript);
         }
 

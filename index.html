@@ -584,7 +584,7 @@
                 }
 
                 if (noteElement) {
-                    if (sel.value === 'Hẹn lại' || sel.value === 'Không Gặp KH') {
+                    if (sel.value === 'Hẹn lại' || sel.value === 'Không Gặp KH' || sel.value === 'Gặp KH báo huỷ') {
                         noteElement.style.display = 'block';
                     } else {
                         noteElement.style.display = 'none';
@@ -819,7 +819,7 @@
 
                 let parsedKQ = parseKetQua(item.ketQua);
                 let isHenLai = parsedKQ.status === "Hẹn lại";
-                let showNote = isHenLai || parsedKQ.status === "Không Gặp KH";
+                let showNote = isHenLai || parsedKQ.status === "Không Gặp KH" || parsedKQ.status === "Gặp KH báo huỷ";
 
                 return `
                     <div class="ticket-card ${isDanger ? 'is-overdue' : ''}">
@@ -846,6 +846,7 @@
                                 <option value="" ${parsedKQ.status === "" ? "selected" : ""}>-- Chọn kết quả --</option>
                                 <option value="Đã thu" ${parsedKQ.status === "Đã thu" ? "selected" : ""}>Đã thu</option>
                                 <option value="Không Gặp KH" ${parsedKQ.status === "Không Gặp KH" ? "selected" : ""}>Không Gặp KH</option>
+                                <option value="Gặp KH báo huỷ" ${parsedKQ.status === "Gặp KH báo huỷ" ? "selected" : ""}>Gặp KH báo huỷ</option>
                                 <option value="Hẹn lại" ${isHenLai ? "selected" : ""}>Hẹn lại</option>
                             </select>
                             <input type="datetime-local" class="appointment-input" id="appt_${item.row}" style="display:${isHenLai ? 'block' : 'none'};">
@@ -874,9 +875,9 @@
                 value = `Hẹn lại - ${formatAppointment(apptElement.value)}`;
             }
 
-            // Ghi chú chỉ áp dụng cho "Hẹn lại" và "Không Gặp KH", để trống thì không ghi đè cột D
+            // Ghi chú áp dụng cho "Hẹn lại", "Không Gặp KH" và "Gặp KH báo huỷ", để trống thì không ghi đè cột D
             let noteValue = "";
-            if ((status === "Hẹn lại" || status === "Không Gặp KH") && noteElement) {
+            if ((status === "Hẹn lại" || status === "Không Gặp KH" || status === "Gặp KH báo huỷ") && noteElement) {
                 noteValue = noteElement.value.trim();
             }
 

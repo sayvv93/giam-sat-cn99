@@ -733,19 +733,19 @@
                 <div class="filter-grid">
                     <div class="filter-field">
                         <label for="filterB">📍 Block</label>
-                        <select id="filterB" onchange="applyFilters()">
+                        <select id="filterB" onchange="onFilterBlockChange()">
                             <option value="">Tất cả Block</option>
                         </select>
                     </div>
                     <div class="filter-field">
                         <label for="filterC">⚙️ Kỹ thuật</label>
-                        <select id="filterC" onchange="applyFilters()">
+                        <select id="filterC" onchange="onFilterKTChange()">
                             <option value="">Tất cả kỹ thuật</option>
                         </select>
                     </div>
                     <div class="filter-field">
                         <label for="filterKV">🌍 KV</label>
-                        <select id="filterKV" onchange="applyFilters()">
+                        <select id="filterKV" onchange="onFilterKVChange()">
                             <option value="">Tất cả KV</option>
                         </select>
                     </div>
@@ -945,17 +945,61 @@
             }[c]));
         }
 
-        function initFilters() {
-            let blocks = [...new Set(allData.map(item => item.khuVuc))].filter(b => b && b !== "#N/A").sort();
-            let kyThuats = [...new Set(allData.map(item => item.kyThuat))].filter(kt => kt && kt !== "#N/A").sort();
-            let kvs = [...new Set(allData.map(item => item.kv))].filter(kv => kv && kv !== "#N/A").sort();
-            let cuss = [...new Set(allData.map(item => item.cus))].filter(cus => cus && cus !== "#N/A").sort();
+        // Dựng lại danh sách option cho 1 select, chỉ theo dữ liệu đã được thu hẹp (scopeData).
+        // Giữ nguyên lựa chọn hiện tại nếu vẫn còn hợp lệ trong danh sách mới, ngược lại reset về "Tất cả".
+        function rebuildSelectOptions(selectEl, scopeData, field, placeholderText) {
+            let currentValue = selectEl.value;
+            let values = [...new Set(scopeData.map(item => item[field]))].filter(v => v && v !== "#N/A").sort();
 
+            selectEl.innerHTML = '';
+            selectEl.add(new Option(placeholderText, ''));
+            values.forEach(v => selectEl.add(new Option(v, v)));
+
+            selectEl.value = values.includes(currentValue) ? currentValue : '';
+        }
+
+        // Lọc allData theo các cấp TRÊN đã chọn, dùng để tính option cho cấp hiện tại.
+        // uptoLevel: 1 = chỉ theo Block, 2 = theo Block + Kỹ thuật, 3 = theo Block + Kỹ thuật + KV
+        function getUpperScopedData(uptoLevel) {
+            let selectedBlock = dom.filterB.value;
+            let selectedKT = dom.filterC.value;
+            let selectedKV = dom.filterKV.value;
+
+            return allData.filter(item => {
+                if (uptoLevel >= 1 && selectedBlock && item.khuVuc !== selectedBlock) return false;
+                if (uptoLevel >= 2 && selectedKT && item.kyThuat !== selectedKT) return false;
+                if (uptoLevel >= 3 && selectedKV && item.kv !== selectedKV) return false;
+                return true;
+            });
+        }
+
+        // Bộ lọc phân cấp: chọn Block sẽ thu hẹp Kỹ thuật -> thu hẹp KV -> thu hẹp CUS
+        function onFilterBlockChange() {
+            rebuildSelectOptions(dom.filterC, getUpperScopedData(1), 'kyThuat', 'Tất cả kỹ thuật');
+            rebuildSelectOptions(dom.filterKV, getUpperScopedData(2), 'kv', 'Tất cả KV');
+            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
+            applyFilters();
+        }
+
+        function onFilterKTChange() {
+            rebuildSelectOptions(dom.filterKV, getUpperScopedData(2), 'kv', 'Tất cả KV');
+            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
+            applyFilters();
+        }
+
+        function onFilterKVChange() {
+            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
+            applyFilters();
+        }
+
+        function initFilters() {
+            // Chỉ dựng danh sách 1 lần khi có dữ liệu đầu tiên — ở cấp gốc (chưa chọn gì) nên
+            // mỗi select vẫn hiện đủ mọi giá trị, y hệt hành vi ban đầu.
             if (dom.filterB.options.length <= 1) {
-                blocks.forEach(b => dom.filterB.add(new Option(b, b)));
-                kyThuats.forEach(kt => dom.filterC.add(new Option(kt, kt)));
-                kvs.forEach(kv => dom.filterKV.add(new Option(kv, kv)));
-                cuss.forEach(cus => dom.filterCUS.add(new Option(cus, cus)));
+                rebuildSelectOptions(dom.filterB, allData, 'khuVuc', 'Tất cả Block');
+                rebuildSelectOptions(dom.filterC, allData, 'kyThuat', 'Tất cả kỹ thuật');
+                rebuildSelectOptions(dom.filterKV, allData, 'kv', 'Tất cả KV');
+                rebuildSelectOptions(dom.filterCUS, allData, 'cus', 'Tất cả CUS');
             }
         }
 

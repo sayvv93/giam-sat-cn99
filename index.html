@@ -732,6 +732,12 @@
                 </summary>
                 <div class="filter-grid">
                     <div class="filter-field">
+                        <label for="filterKV">🌍 KV</label>
+                        <select id="filterKV" onchange="onFilterKVChange()">
+                            <option value="">Tất cả KV</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
                         <label for="filterB">📍 Block</label>
                         <select id="filterB" onchange="onFilterBlockChange()">
                             <option value="">Tất cả Block</option>
@@ -741,12 +747,6 @@
                         <label for="filterC">⚙️ Kỹ thuật</label>
                         <select id="filterC" onchange="onFilterKTChange()">
                             <option value="">Tất cả kỹ thuật</option>
-                        </select>
-                    </div>
-                    <div class="filter-field">
-                        <label for="filterKV">🌍 KV</label>
-                        <select id="filterKV" onchange="onFilterKVChange()">
-                            <option value="">Tất cả KV</option>
                         </select>
                     </div>
                     <div class="filter-field">
@@ -959,46 +959,48 @@
         }
 
         // Lọc allData theo các cấp TRÊN đã chọn, dùng để tính option cho cấp hiện tại.
-        // uptoLevel: 1 = chỉ theo Block, 2 = theo Block + Kỹ thuật, 3 = theo Block + Kỹ thuật + KV
+        // Thứ tự phân cấp: KV -> Block -> Kỹ thuật -> CUS
+        // uptoLevel: 1 = theo KV, 2 = theo KV + Block, 3 = theo KV + Block + Kỹ thuật
         function getUpperScopedData(uptoLevel) {
+            let selectedKV = dom.filterKV.value;
             let selectedBlock = dom.filterB.value;
             let selectedKT = dom.filterC.value;
-            let selectedKV = dom.filterKV.value;
 
             return allData.filter(item => {
-                if (uptoLevel >= 1 && selectedBlock && item.khuVuc !== selectedBlock) return false;
-                if (uptoLevel >= 2 && selectedKT && item.kyThuat !== selectedKT) return false;
-                if (uptoLevel >= 3 && selectedKV && item.kv !== selectedKV) return false;
+                if (uptoLevel >= 1 && selectedKV && item.kv !== selectedKV) return false;
+                if (uptoLevel >= 2 && selectedBlock && item.khuVuc !== selectedBlock) return false;
+                if (uptoLevel >= 3 && selectedKT && item.kyThuat !== selectedKT) return false;
                 return true;
             });
         }
 
-        // Bộ lọc phân cấp: chọn Block sẽ thu hẹp Kỹ thuật -> thu hẹp KV -> thu hẹp CUS
+        // Bộ lọc phân cấp: chọn KV sẽ thu hẹp Block -> thu hẹp Kỹ thuật -> thu hẹp CUS
+        // (dựng lần lượt từ trên xuống, mỗi cấp dùng giá trị cấp trên đã được cập nhật)
+        function onFilterKVChange() {
+            rebuildSelectOptions(dom.filterB, getUpperScopedData(1), 'khuVuc', 'Tất cả Block');
+            rebuildSelectOptions(dom.filterC, getUpperScopedData(2), 'kyThuat', 'Tất cả kỹ thuật');
+            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
+            applyFilters();
+        }
+
         function onFilterBlockChange() {
-            rebuildSelectOptions(dom.filterC, getUpperScopedData(1), 'kyThuat', 'Tất cả kỹ thuật');
-            rebuildSelectOptions(dom.filterKV, getUpperScopedData(2), 'kv', 'Tất cả KV');
+            rebuildSelectOptions(dom.filterC, getUpperScopedData(2), 'kyThuat', 'Tất cả kỹ thuật');
             rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
             applyFilters();
         }
 
         function onFilterKTChange() {
-            rebuildSelectOptions(dom.filterKV, getUpperScopedData(2), 'kv', 'Tất cả KV');
-            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
-            applyFilters();
-        }
-
-        function onFilterKVChange() {
             rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
             applyFilters();
         }
 
         function initFilters() {
             // Chỉ dựng danh sách 1 lần khi có dữ liệu đầu tiên — ở cấp gốc (chưa chọn gì) nên
-            // mỗi select vẫn hiện đủ mọi giá trị, y hệt hành vi ban đầu.
-            if (dom.filterB.options.length <= 1) {
+            // mỗi select vẫn hiện đủ mọi giá trị.
+            if (dom.filterKV.options.length <= 1) {
+                rebuildSelectOptions(dom.filterKV, allData, 'kv', 'Tất cả KV');
                 rebuildSelectOptions(dom.filterB, allData, 'khuVuc', 'Tất cả Block');
                 rebuildSelectOptions(dom.filterC, allData, 'kyThuat', 'Tất cả kỹ thuật');
-                rebuildSelectOptions(dom.filterKV, allData, 'kv', 'Tất cả KV');
                 rebuildSelectOptions(dom.filterCUS, allData, 'cus', 'Tất cả CUS');
             }
         }

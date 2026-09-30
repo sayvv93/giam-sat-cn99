@@ -390,6 +390,12 @@
 
         select:focus { border-color: var(--fpt-orange); outline: none; }
 
+        /* Bộ lọc Kết Quả đang được chọn -> viền teal để dễ nhận ra danh sách đang bị lọc theo trạng thái */
+        #filterKQ.is-active {
+            border-color: var(--teal);
+            background-color: var(--teal-tint);
+        }
+
         /* TICKET LIST — thay bảng ngang bằng danh sách thẻ, đọc được trên màn hẹp */
         .ticket-list {
             display: grid;
@@ -750,9 +756,9 @@
                         </select>
                     </div>
                     <div class="filter-field">
-                        <label for="filterCUS">👤 CUS</label>
-                        <select id="filterCUS" onchange="applyFilters()">
-                            <option value="">Tất cả CUS</option>
+                        <label for="filterKQ">📝 Kết Quả</label>
+                        <select id="filterKQ" onchange="applyFilters()">
+                            <option value="">Phiếu còn tồn (mặc định)</option>
                         </select>
                     </div>
                 </div>
@@ -792,7 +798,7 @@
             dom.filterB = document.getElementById('filterB');
             dom.filterC = document.getElementById('filterC');
             dom.filterKV = document.getElementById('filterKV');
-            dom.filterCUS = document.getElementById('filterCUS');
+            dom.filterKQ = document.getElementById('filterKQ');
             dom.statTotal = document.getElementById('statTotal');
             dom.statOverdue = document.getElementById('statOverdue');
             dom.motivationMsg = document.getElementById('motivationMsg');
@@ -959,7 +965,7 @@
         }
 
         // Lọc allData theo các cấp TRÊN đã chọn, dùng để tính option cho cấp hiện tại.
-        // Thứ tự phân cấp: KV -> Block -> Kỹ thuật -> CUS
+        // Thứ tự phân cấp: KV -> Block -> Kỹ thuật (bộ lọc Kết Quả đứng riêng, không phân cấp)
         // uptoLevel: 1 = theo KV, 2 = theo KV + Block, 3 = theo KV + Block + Kỹ thuật
         function getUpperScopedData(uptoLevel) {
             let selectedKV = dom.filterKV.value;
@@ -974,34 +980,30 @@
             });
         }
 
-        // Bộ lọc phân cấp: chọn KV sẽ thu hẹp Block -> thu hẹp Kỹ thuật -> thu hẹp CUS
+        // Bộ lọc phân cấp: chọn KV sẽ thu hẹp Block -> thu hẹp Kỹ thuật
         // (dựng lần lượt từ trên xuống, mỗi cấp dùng giá trị cấp trên đã được cập nhật)
         function onFilterKVChange() {
             rebuildSelectOptions(dom.filterB, getUpperScopedData(1), 'khuVuc', 'Tất cả Block');
             rebuildSelectOptions(dom.filterC, getUpperScopedData(2), 'kyThuat', 'Tất cả kỹ thuật');
-            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
             applyFilters();
         }
 
         function onFilterBlockChange() {
             rebuildSelectOptions(dom.filterC, getUpperScopedData(2), 'kyThuat', 'Tất cả kỹ thuật');
-            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
             applyFilters();
         }
 
         function onFilterKTChange() {
-            rebuildSelectOptions(dom.filterCUS, getUpperScopedData(3), 'cus', 'Tất cả CUS');
             applyFilters();
         }
 
         function initFilters() {
             // Chỉ dựng danh sách 1 lần khi có dữ liệu đầu tiên — ở cấp gốc (chưa chọn gì) nên
-            // mỗi select vẫn hiện đủ mọi giá trị.
+            // mỗi select vẫn hiện đủ mọi giá trị. (Bộ lọc Kết Quả được dựng lại trong applyFilters để cập nhật số đếm.)
             if (dom.filterKV.options.length <= 1) {
                 rebuildSelectOptions(dom.filterKV, allData, 'kv', 'Tất cả KV');
                 rebuildSelectOptions(dom.filterB, allData, 'khuVuc', 'Tất cả Block');
                 rebuildSelectOptions(dom.filterC, allData, 'kyThuat', 'Tất cả kỹ thuật');
-                rebuildSelectOptions(dom.filterCUS, allData, 'cus', 'Tất cả CUS');
             }
         }
 
@@ -1010,6 +1012,7 @@
         const RESOLVED_STATUSES = ["đã thu", "đã gửi hình và định vị lên gr", "tạo checklist", "thu modem-bill notok", "gặp kh báo huỷ"];
 
         // Cột cố định cho bảng Report — đúng các giá trị Kết Quả này, không hiển thị các giá trị khác
+        // (cũng là danh sách option cố định của bộ lọc Kết Quả)
         const REPORT_STATUSES = ["Chưa thu", "Không Gặp KH", "Gặp KH báo huỷ", "Thu modem-Bill Notok", "Hẹn lại", "Đã thu"];
 
         // Cột Kết Quả lưu "Hẹn lại - 15/10/2026 14:30" khi có thời gian hẹn kèm theo.
@@ -1021,6 +1024,29 @@
             return { status: val, appointment: "" };
         }
 
+        // Trạng thái dùng để gộp nhóm / lọc: Kết Quả để trống mặc định tính là "Chưa thu"
+        function getStatusKey(item) {
+            return parseKetQua(item.ketQua).status || "Chưa thu";
+        }
+
+        // Dựng lại option bộ lọc Kết Quả kèm số phiếu của từng trạng thái (theo KV/Block/Kỹ thuật đang chọn).
+        // Danh sách option cố định theo REPORT_STATUSES nên lựa chọn hiện tại luôn được giữ nguyên.
+        function rebuildKQOptions(scopeData) {
+            let currentValue = dom.filterKQ.value;
+            let counts = {};
+            scopeData.forEach(item => {
+                let s = getStatusKey(item);
+                counts[s] = (counts[s] || 0) + 1;
+            });
+
+            dom.filterKQ.innerHTML = '';
+            dom.filterKQ.add(new Option('Phiếu còn tồn (mặc định)', ''));
+            REPORT_STATUSES.forEach(s => dom.filterKQ.add(new Option(`${s} (${counts[s] || 0})`, s)));
+
+            dom.filterKQ.value = REPORT_STATUSES.includes(currentValue) ? currentValue : '';
+            dom.filterKQ.classList.toggle('is-active', dom.filterKQ.value !== '');
+        }
+
         // Chuyển giá trị input datetime-local ("2026-10-15T14:30") thành chuỗi dd/mm/yyyy hh:mm để ghi vào Kết Quả
         function formatAppointment(datetimeLocalValue) {
             let d = new Date(datetimeLocalValue);
@@ -1030,29 +1056,30 @@
         }
 
         function applyFilters() {
-            let selectedBlock = dom.filterB.value;
-            let selectedKT = dom.filterC.value;
-            let selectedKV = dom.filterKV.value;
-            let selectedCUS = dom.filterCUS.value;
+            // Dữ liệu theo 3 bộ lọc KV/Block/Kỹ thuật, giữ nguyên TẤT CẢ giá trị Kết Quả
+            // -> dùng để tính Report, banner, bảng xếp hạng (không bị ảnh hưởng bởi bộ lọc Kết Quả)
+            let scoped = getUpperScopedData(3);
 
-            // Dữ liệu theo 4 bộ lọc Block/Kỹ thuật/KV/CUS, giữ nguyên TẤT CẢ giá trị Kết Quả
-            // -> dùng để tính Report cho thấy đầy đủ bức tranh (không chỉ phần còn tồn)
-            let scoped = allData.filter(item =>
-                (!selectedBlock || item.khuVuc === selectedBlock)
-                && (!selectedKT || item.kyThuat === selectedKT)
-                && (!selectedKV || item.kv === selectedKV)
-                && (!selectedCUS || item.cus === selectedCUS)
-            );
+            rebuildKQOptions(scoped);
+            let selectedKQ = dom.filterKQ.value;
 
-            // Chỉ những phiếu chưa xử lý xong -> dùng cho danh sách Tồn Phiếu + số liệu tổng quan
+            let byPendDesc = (a, b) => getPendData(b).totalMs - getPendData(a).totalMs;
+
+            // Chỉ những phiếu chưa xử lý xong -> dùng cho số liệu tổng quan
             let pendingOnly = scoped.filter(item => {
                 let status = parseKetQua(item.ketQua).status.toLowerCase();
                 return !RESOLVED_STATUSES.includes(status);
             });
-            pendingOnly.sort((a, b) => getPendData(b).totalMs - getPendData(a).totalMs);
+            pendingOnly.sort(byPendDesc);
+
+            // Danh sách thẻ: mặc định là phiếu còn tồn; khi chọn 1 Kết Quả cụ thể thì hiện đúng
+            // các phiếu có Kết Quả đó (kể cả trạng thái đã xử lý xong như "Đã thu", để rà soát/sửa lại)
+            let listData = selectedKQ
+                ? scoped.filter(item => getStatusKey(item) === selectedKQ).sort(byPendDesc)
+                : pendingOnly;
 
             updateStats(pendingOnly);
-            renderTickets(pendingOnly);
+            renderTickets(listData);
             renderGroupCards(scoped);
             renderMotivation(scoped);
         }
@@ -1080,7 +1107,7 @@
             let counts = {};
             REPORT_STATUSES.forEach(s => counts[s] = 0);
             data.forEach(item => {
-                let status = parseKetQua(item.ketQua).status || "Chưa thu";
+                let status = getStatusKey(item);
                 counts[status] = (counts[status] || 0) + 1;
             });
 
@@ -1158,7 +1185,7 @@
 
                 // Đếm theo trạng thái gốc (bỏ qua phần thời gian hẹn kèm theo, để không bị tách lẻ theo từng giờ hẹn khác nhau)
                 // Kết Quả để trống (chưa chọn) mặc định tính là "Chưa thu"
-                let statusRaw = parseKetQua(item.ketQua).status || "Chưa thu";
+                let statusRaw = getStatusKey(item);
                 grp.statusCounts[statusRaw] = (grp.statusCounts[statusRaw] || 0) + 1;
             });
 
@@ -1233,7 +1260,10 @@
 
         function renderTickets(data) {
             if (data.length === 0) {
-                dom.ticketList.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">🚫 Không tìm thấy phiếu nào khớp bộ lọc.</div>`;
+                let emptyMsg = dom.filterKQ.value
+                    ? `🚫 Không có phiếu nào có Kết Quả "${escapeHtml(dom.filterKQ.value)}" trong bộ lọc hiện tại.`
+                    : `🚫 Không tìm thấy phiếu nào khớp bộ lọc.`;
+                dom.ticketList.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">${emptyMsg}</div>`;
                 return;
             }
 
